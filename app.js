@@ -21,6 +21,11 @@ const VERSION = "v22.0";
 
 const userContexts = new Map();
 
+//----------
+
+const flowId = await updateWhatsAppFlow(flowStructure);
+
+
 // ____________________________________
 
 const handleTextMessages = async (message, phone, phoneNumberId) => {
@@ -43,7 +48,7 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       break;
     case "menu2":
       console.log("User requested the menu.");
-      await sendSecondCatalog(phone, phoneNumberId);
+      await sendSecondCatalog(phone, phoneNumberId, flowId);
       break;
     
 
@@ -180,68 +185,6 @@ const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
     }
 };
 
-const getStaticMenu2 = () => {
-    return {
-        "Food": {
-            "Starters": [
-                { "id": "F1", "name": "Spring Rolls", "price": 4.50, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" },
-                { "id": "F2", "name": "Chicken Wings", "price": 6.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
-            ],
-            "Main Course": [
-                { "id": "F3", "name": "Beef Burger", "price": 8.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
-            ]
-        },
-        "Drinks": {
-            "Beers": [
-                { "id": "B1", "name": "Heineken", "price": 3.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
-            ],
-            "Cocktails": [
-                { "id": "C1", "name": "Mojito", "price": 6.50, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
-            ]
-        }
-    };
-};
-
-// Function to send a media message (image)
-const sendMediaMessage2 = async (phone, imageUrl, caption, phoneNumberId) => {
-    const payload = {
-        type: "image",
-        image: {
-            link: imageUrl,
-            caption: caption
-        }
-    };
-    return sendWhatsAppMessage(phone, payload, phoneNumberId);
-};
-
-// Function to send the catalog request
-const sendCatalogRequest2 = async (phone, phoneNumberId) => {
-    const menu = getStaticMenu();
-    let menuText = "📜 *MENU*\n";
-    
-    for (const [className, categories] of Object.entries(menu)) {
-        menuText += `\n🍽️ *${className.toUpperCase()}*\n`;
-        for (const [categoryName, items] of Object.entries(categories)) {
-            menuText += `\n➖ *${categoryName.toUpperCase()}*\n`;
-            items.forEach(item => {
-                menuText += `✅ ${item.id}. ${item.name} - $${item.price} [Select]\n`;
-            });
-        }
-    }
-
-    // Send the menu text first
-    await sendWhatsAppMessage(phone, { type: "text", text: { body: menuText } }, phoneNumberId);
-
-    // Send images for each item
-    for (const [className, categories] of Object.entries(menu)) {
-        for (const [categoryName, items] of Object.entries(categories)) {
-            for (const item of items) {
-                const caption = `🍽️ *${item.name}* - $${item.price}\n${item.description || ""}`;
-                await sendMediaMessage(phone, item.image, caption, phoneNumberId);
-            }
-        }
-    }
-};
 
 
 //---------------------
@@ -319,8 +262,176 @@ const sendCatalogRequest = async (phone, phoneNumberId) => {
 
 //------------------
 
+// Mock product list
+const mockProducts = [
+  {
+    id: "prod1",
+    name: "Fanta Orange 33 CL",
+    description: "Soft drink, glass bottle.",
+    imageUrl: "iVBORw0KGgU5ErkJggg==", // Your base64 image string
+    price: "500 RWF"
+  },
+  {
+    id: "prod2",
+    name: "Fanta Citron 50 CL",
+    description: "Soft drink, plastic bottle.",
+    imageUrl: "iVBORw0ujklajdsfljasdjfC", // Your base64 image string
+    price: "800 RWF"
+  },
+  {
+    id: "prod3",
+    name: "Coca Cola 50 CL",
+    description: "Soft drink, plastic bottle.",
+    imageUrl: "base64string3", // Your base64 image string
+    price: "800 RWF"
+  }
+];
 
-async function sendSecondCatalog(phone, phoneNumberId) {
+function generateDynamicFlow(mockProducts) {
+  // Generate OptIn components for each product
+  const productOptIns = mockProducts.map((product, index) => ({
+    label: `${product.name} - ${product.price}`,
+    name: `${product.name.replace(/\s+/g, '_')}_${product.id}`,
+    required: true,
+    type: "OptIn",
+    "on-click-action": {
+      name: "navigate",
+      next: {
+        name: `OPTIN_SCREEN_screen_${product.id}`,
+        type: "screen"
+      },
+      payload: {}
+    }
+  }));
+
+  // Generate detail screens for each product
+  const productScreens = mockProducts.map(product => ({
+    data: {},
+    id: `OPTIN_SCREEN_screen_${product.id}`,
+    layout: {
+      children: [
+        {
+          children: [
+            {
+              text: `${product.name}\n${product.description}\nPrice: ${product.price}`,
+              type: "TextBody"
+            },
+            {
+              height: 400,
+              "scale-type": "contain",
+              src: product.imageUrl,
+              type: "Image"
+            }
+          ],
+          name: "flow_path",
+          type: "Form"
+        }
+      ],
+      type: "SingleColumnLayout"
+    },
+    title: "Details"
+  }));
+
+  // Generate the complete flow structure
+  const flowStructure = {
+    screens: [
+      {
+        data: {},
+        id: "QUESTION_THREE",
+        layout: {
+          children: [
+            {
+              children: [
+                {
+                  type: "TextHeading",
+                  text: "Our products"
+                },
+                ...productOptIns,
+                {
+                  label: "Done",
+                  "on-click-action": {
+                    name: "complete",
+                    payload: Object.fromEntries(
+                      mockProducts.map((product, index) => [
+                        `screen_0_${product.name.replace(/\s+/g, '_')}_${index}`,
+                        `\${form.${product.name.replace(/\s+/g, '_')}_${product.id}}`
+                      ])
+                    )
+                  },
+                  type: "Footer"
+                }
+              ],
+              name: "flow_path",
+              type: "Form"
+            }
+          ],
+          type: "SingleColumnLayout"
+        },
+        terminal: true,
+        title: "Icupa App"
+      },
+      ...productScreens
+    ],
+    version: "6.3"
+  };
+
+  return flowStructure;
+}
+
+// Function to send the WhatsApp message with the flow
+async function sendSecondCatalog(phone, phoneNumberId, flowId) {
+  const payload = {
+    type: "template",
+    template: {
+      name: "menuone",
+      language: {
+        code: "en_US",
+      },
+      components: [
+        {
+          type: "button",
+          sub_type: "flow",
+          index: "0",
+          parameters: [
+            {
+              type: "payload",
+              payload: flowId,
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
+}
+
+// Example usage
+function generateAndLogFlow() {
+  try {
+    const dynamicFlow = generateDynamicFlow(mockProducts);
+    console.log(JSON.stringify(dynamicFlow, null, 2));
+    return dynamicFlow;
+  } catch (error) {
+    console.error('Error generating flow:', error);
+  }
+}
+
+// Generate and log the flow structure
+const flow = generateAndLogFlow();
+
+// get the flowId
+async function updateWhatsAppFlow(flow) {
+    const response = await whatsappAPI.createFlow(flowStructure);
+    return response.flowId; 
+}
+
+
+
+//-------------
+
+
+async function sendSecondCatalogSave(phone, phoneNumberId) {
   const payload = {
     type: "template",
     template: {
