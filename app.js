@@ -180,7 +180,7 @@ const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
     }
 };
 
-const getStaticMenu = () => {
+const getStaticMenu2 = () => {
     return {
         "Food": {
             "Starters": [
@@ -203,7 +203,7 @@ const getStaticMenu = () => {
 };
 
 // Function to send a media message (image)
-const sendMediaMessage = async (phone, imageUrl, caption, phoneNumberId) => {
+const sendMediaMessage2 = async (phone, imageUrl, caption, phoneNumberId) => {
     const payload = {
         type: "image",
         image: {
@@ -215,7 +215,7 @@ const sendMediaMessage = async (phone, imageUrl, caption, phoneNumberId) => {
 };
 
 // Function to send the catalog request
-const sendCatalogRequest = async (phone, phoneNumberId) => {
+const sendCatalogRequest2 = async (phone, phoneNumberId) => {
     const menu = getStaticMenu();
     let menuText = "📜 *MENU*\n";
     
@@ -242,6 +242,82 @@ const sendCatalogRequest = async (phone, phoneNumberId) => {
         }
     }
 };
+
+
+//---------------------
+
+const getStaticMenu = () => {
+    return {
+        "Food": {
+            "Starters": [
+                { "id": "F1", "name": "Spring Rolls", "price": 4.50, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" },
+                { "id": "F2", "name": "Chicken Wings", "price": 6.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+            ],
+            "Main Course": [
+                { "id": "F3", "name": "Beef Burger", "price": 8.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+            ]
+        },
+        "Drinks": {
+            "Beers": [
+                { "id": "B1", "name": "Heineken", "price": 3.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+            ],
+            "Cocktails": [
+                { "id": "C1", "name": "Mojito", "price": 6.50, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+            ]
+        }
+    };
+};
+
+// Function to send an interactive list message
+const sendInteractiveListMessage = async (phone, menu, phoneNumberId) => {
+    const sections = [];
+
+    for (const [className, categories] of Object.entries(menu)) {
+        const rows = [];
+        for (const [categoryName, items] of Object.entries(categories)) {
+            items.forEach(item => {
+                rows.push({
+                    id: item.id,
+                    title: item.name,
+                    description: `$${item.price}`,
+                    image: item.image
+                });
+            });
+        }
+        sections.push({
+            title: className.toUpperCase(),
+            rows: rows
+        });
+    }
+
+    const payload = {
+        type: "interactive",
+        interactive: {
+            type: "list",
+            header: {
+                type: "text",
+                text: "📜 MENU"
+            },
+            body: {
+                text: "Here's our menu. Select an item to learn more!"
+            },
+            action: {
+                button: "View Menu",
+                sections: sections
+            }
+        }
+    };
+
+    return sendWhatsAppMessage(phone, payload, phoneNumberId);
+};
+
+// Handle catalog request
+const sendCatalogRequest = async (phone, phoneNumberId) => {
+    const menu = getStaticMenu();
+    await sendInteractiveListMessage(phone, menu, phoneNumberId);
+};
+
+//------------------
 
 
 async function sendSecondCatalog(phone, phoneNumberId) {
