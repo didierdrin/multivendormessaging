@@ -41,6 +41,10 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User requested the menu.");
       await sendCatalogRequest(phone, phoneNumberId);
       break;
+    case "menu2":
+      console.log("User requested the menu.");
+      await sendSecondCatalog(phone, phoneNumberId);
+      break;
     
 
     default:
@@ -212,6 +216,35 @@ const sendCatalogRequest = async (phone, phoneNumberId) => {
     }
     return sendWhatsAppMessage(phone, { type: "text", text: { body: menuText } }, phoneNumberId);
 };
+
+
+async function sendSecondCatalog(phone, phoneNumberId) {
+  const payload = {
+    type: "template",
+    template: {
+      name: "menuone", 
+      language: {
+        code: "en_US", // Replace with the appropriate language code
+      },
+      components: [
+        {
+          type: "button",
+          sub_type: "flow",
+          index: "0",
+          parameters: [
+            {
+              type: "payload",
+              payload: "974841610643366", 
+            },
+          ],
+        },
+      ],
+    },
+  };
+
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
+}
+
 
 app.post("/api/get-menu", async (req, res) => {
     try {
