@@ -340,8 +340,8 @@ app.post("/webhook", async (req, res) => {
       
              
         try {
-            if (phoneNumberId === "566590419864792") {
-               await handlePhoneNumber2Logic(message, phone, changes, phoneNumberId);
+            if (phoneNumberId === "189923527537354") {
+               await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
             } else {
                 console.warn("Unknown phone number ID:", phoneNumberId);
             }
@@ -359,7 +359,7 @@ app.post("/webhook", async (req, res) => {
 
 
 
-  async function handlePhoneNumber2Logic(message, phone, changes, phoneNumberId) {
+  async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
     switch (message.type) {
               case "order":
                 await handleOrder(
