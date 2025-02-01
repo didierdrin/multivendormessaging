@@ -23,7 +23,7 @@ const userContexts = new Map();
 
 //----------
 
-const flowId = await updateWhatsAppFlow(flow);
+
 
 
 // ____________________________________
@@ -426,7 +426,7 @@ async function updateWhatsAppFlow(flow) {
     return response.flowId; 
 }
 
-
+const flowId = await updateWhatsAppFlow(flow);
 
 //-------------
 
