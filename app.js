@@ -435,12 +435,7 @@ const whatsappAPI = {
           name: flowStructure.name,
           category: flowStructure.category,
           language: "en_US",
-          components: flowStructure.components.map(component => ({
-            id: component.id,
-            layout: component.layout,
-            terminal: component.terminal,
-            title: component.title
-          }))
+          components: flowStructure.components
         },
         {
           headers: {
