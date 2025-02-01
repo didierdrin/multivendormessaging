@@ -415,7 +415,7 @@ async function sendSecondCatalog(phone, phoneNumberId, flowId) {
           index: "0",
           parameters: [
             {
-              type: "payload",
+              type: "flow",
               payload: flowId,
             },
           ],
