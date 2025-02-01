@@ -337,7 +337,7 @@ function generateDynamicFlow(mockProducts) {
 
     return {
   name: "menuoneflow",
-  language: { code: "en_US" }, 
+  language: { code:"en_US" }, 
   category: "MARKETING",    // Added category
   components: [
     {
@@ -434,7 +434,7 @@ const whatsappAPI = {
         {
           name: flowStructure.name,
           category: flowStructure.category,
-          language: { code: "en_US" },
+          language: "en_US",
           components: flowStructure.components.map(component => ({
             id: component.id,
             layout: component.layout,
