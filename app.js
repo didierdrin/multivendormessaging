@@ -250,19 +250,19 @@ const getStaticMenu = () => {
     return {
         "Food": {
             "Starters": [
-                { "id": "F1", "name": "Spring Rolls", "price": 4.50, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" },
-                { "id": "F2", "name": "Chicken Wings", "price": 6.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+                { "id": "F1", "name": "Spring Rolls", "price": 4050, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" },
+                { "id": "F2", "name": "Chicken Wings", "price": 6000, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
             ],
             "Main Course": [
-                { "id": "F3", "name": "Beef Burger", "price": 8.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+                { "id": "F3", "name": "Beef Burger", "price": 8000, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
             ]
         },
         "Drinks": {
             "Beers": [
-                { "id": "B1", "name": "Heineken", "price": 3.00, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+                { "id": "B1", "name": "Heineken", "price": 3000, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
             ],
             "Cocktails": [
-                { "id": "C1", "name": "Mojito", "price": 6.50, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
+                { "id": "C1", "name": "Mojito", "price": 6050, "image": "https://res.cloudinary.com/dezvucnpl/image/upload/v1732548205/image_2024-11-25_172320646_yzvjon.png" }
             ]
         }
     };
@@ -280,7 +280,7 @@ const sendInteractiveListMessage = async (phone, menu, phoneNumberId) => {
                     id: item.id,
                     title: item.name,
                     description: `$${item.price}`,
-                    image: item.image
+                    //image: item.image
                 });
             });
         }
