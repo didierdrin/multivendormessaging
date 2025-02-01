@@ -306,7 +306,7 @@ function generateDynamicFlow(mockProducts) {
 
   // Generate detail screens for each product
   const productScreens = mockProducts.map(product => ({
-    data: {},
+    //data: {},
     id: `OPTIN_SCREEN_screen_${product.id}`,
     layout: {
       children: [
