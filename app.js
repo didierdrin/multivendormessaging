@@ -332,52 +332,71 @@ function generateDynamicFlow(mockProducts) {
     title: "Details"
   }));
 
-  // Generate the complete flow structure
-  const flowStructure = {
-    name: "menuflow",
-    language: { code: "en_GB" },
-    screens: [
+  // Generate the complete flow structure with supported language code
+  return {
+    name: "menuoneflow",
+    language: { code: "en" }, // Changed from en_GB to en
+    category: "MARKETING",    // Added category
+    components: [             // Added required components structure
       {
-        data: {},
-        id: "QUESTION_THREE",
-        layout: {
-          children: [
-            {
-              children: [
-                {
-                  type: "TextHeading",
-                  text: "Our products"
-                },
-                ...productOptIns,
-                {
-                  label: "Done",
-                  "on-click-action": {
-                    name: "complete",
-                    payload: Object.fromEntries(
-                      mockProducts.map((product, index) => [
-                        `screen_0_${product.name.replace(/\s+/g, '_')}_${index}`,
-                        `\${form.${product.name.replace(/\s+/g, '_')}_${product.id}}`
-                      ])
-                    )
-                  },
-                  type: "Footer"
-                }
-              ],
-              name: "flow_path",
-              type: "Form"
-            }
-          ],
-          type: "SingleColumnLayout"
-        },
-        terminal: true,
-        title: "Icupa App"
+        type: "BODY",
+        text: "Welcome to our product catalog"
       },
-      ...productScreens
-    ],
-    version: "6.3"
+      {
+        type: "BUTTONS",
+        buttons: [
+          {
+            type: "FLOW",
+            text: "View Products",
+            flow: {
+              name: "menuflow",
+              data: {
+                screens: [
+                  {
+                    data: {},
+                    id: "QUESTION_THREE",
+                    layout: {
+                      children: [
+                        {
+                          children: [
+                            {
+                              type: "TextHeading",
+                              text: "Our products"
+                            },
+                            ...productOptIns,
+                            {
+                              label: "Done",
+                              "on-click-action": {
+                                name: "complete",
+                                payload: Object.fromEntries(
+                                  mockProducts.map((product, index) => [
+                                    `screen_0_${product.name.replace(/\s+/g, '_')}_${index}`,
+                                    `\${form.${product.name.replace(/\s+/g, '_')}_${product.id}}`
+                                  ])
+                                )
+                              },
+                              type: "Footer"
+                            }
+                          ],
+                          name: "flow_path",
+                          type: "Form"
+                        }
+                      ],
+                      type: "SingleColumnLayout"
+                    },
+                    terminal: true,
+                    title: "Icupa App"
+                  },
+                  ...productScreens
+                ],
+                version: "6.3"
+              }
+            }
+          }
+        ]
+      }
+    ]
   };
-
-  return flowStructure;
 }
 
 // Function to send the WhatsApp message with the flow
@@ -426,13 +445,28 @@ const flow = generateAndLogFlow();
 // WhatsApp API function
 const whatsappAPI = {
   createFlow: async (flowStructure) => {
-    const response = await axios.post("https://graph.facebook.com/v19.0/191711990692012/message_templates", flowStructure, {
-      headers: {
-        Authorization: `Bearer ${ACCESS_TOKEN}`,
-        "Content-Type": "application/json"
-      }
-    });
-    return response.data;
+    try {
+      const response = await axios.post(
+        "https://graph.facebook.com/v19.0/191711990692012/message_templates",
+        {
+          name: flowStructure.name,
+          category: flowStructure.category,
+          language: flowStructure.language,
+          components: flowStructure.components
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      console.log("Template creation response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Template creation error:", error.response?.data || error);
+      throw error;
+    }
   }
 };
 
