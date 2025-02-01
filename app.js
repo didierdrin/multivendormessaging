@@ -201,20 +201,46 @@ const getStaticMenu = () => {
         }
     };
 };
-//handleCatalogRequest
+
+// Function to send a media message (image)
+const sendMediaMessage = async (phone, imageUrl, caption, phoneNumberId) => {
+    const payload = {
+        type: "image",
+        image: {
+            link: imageUrl,
+            caption: caption
+        }
+    };
+    return sendWhatsAppMessage(phone, payload, phoneNumberId);
+};
+
+// Function to send the catalog request
 const sendCatalogRequest = async (phone, phoneNumberId) => {
     const menu = getStaticMenu();
     let menuText = "📜 *MENU*\n";
+    
     for (const [className, categories] of Object.entries(menu)) {
         menuText += `\n🍽️ *${className.toUpperCase()}*\n`;
         for (const [categoryName, items] of Object.entries(categories)) {
             menuText += `\n➖ *${categoryName.toUpperCase()}*\n`;
             items.forEach(item => {
-                menuText += `🖼️ ${item.image}\n✅ ${item.id}. ${item.name} - $${item.price} [Select]\n`;
+                menuText += `✅ ${item.id}. ${item.name} - $${item.price} [Select]\n`;
             });
         }
     }
-    return sendWhatsAppMessage(phone, { type: "text", text: { body: menuText } }, phoneNumberId);
+
+    // Send the menu text first
+    await sendWhatsAppMessage(phone, { type: "text", text: { body: menuText } }, phoneNumberId);
+
+    // Send images for each item
+    for (const [className, categories] of Object.entries(menu)) {
+        for (const [categoryName, items] of Object.entries(categories)) {
+            for (const item of items) {
+                const caption = `🍽️ *${item.name}* - $${item.price}\n${item.description || ""}`;
+                await sendMediaMessage(phone, item.image, caption, phoneNumberId);
+            }
+        }
+    }
 };
 
 
