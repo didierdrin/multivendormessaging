@@ -335,7 +335,7 @@ function generateDynamicFlow(mockProducts) {
   // Generate the complete flow structure with supported language code
   return {
     name: "menuoneflow",
-    language: { code: "en" }, // Changed from en_GB to en
+    language: { code: "en_GB" }, // Changed from en_GB to en
     category: "MARKETING",    // Added category
     components: [             // Added required components structure
       {
