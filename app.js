@@ -425,16 +425,22 @@ const flow = generateAndLogFlow();
 
 
 // WhatsApp API function
+
 const whatsappAPI = {
   createFlow: async (flowStructure) => {
     try {
       const response = await axios.post(
-        "https://graph.facebook.com/v19.0/191711990692012/message_templates",
+        `https://graph.facebook.com/${VERSION}/191711990692012/message_templates`,
         {
           name: flowStructure.name,
           category: flowStructure.category,
-          language: "en_US",//flowStructure.language,
-          components: flowStructure.components
+          language: { code: "en_US" },
+          components: flowStructure.components.map(component => ({
+            id: component.id,
+            layout: component.layout,
+            terminal: component.terminal,
+            title: component.title
+          }))
         },
         {
           headers: {
@@ -451,6 +457,7 @@ const whatsappAPI = {
     }
   }
 };
+
 
 // get the flowId
 async function updateWhatsAppFlow(flow) {
