@@ -333,70 +333,52 @@ function generateDynamicFlow(mockProducts) {
   }));
 
   // Generate the complete flow structure with supported language code
-  return {
-    name: "menuoneflow",
-    language: { code: "en_US" }, // Changed from en_GB to en
-    category: "MARKETING",    // Added category
-    components: [             // Added required components structure
-      {
-        type: "BODY",
-        text: "Welcome to our product catalog"
-      },
-      {
-        type: "BUTTONS",
-        buttons: [
+  
+
+    return {
+  name: "menuoneflow",
+  language: { code: "en_US" }, 
+  category: "MARKETING",    // Added category
+  components: [
+    {
+      data: {},
+      id: "QUESTION_THREE",
+      layout: {
+        children: [
           {
-            type: "FLOW",
-            text: "View Products",
-            flow: {
-              name: "menuoneflow",
-              data: {
-                screens: [
-                  {
-                    data: {},
-                    id: "QUESTION_THREE",
-                    layout: {
-                      children: [
-                        {
-                          children: [
-                            {
-                              type: "TextHeading",
-                              text: "Our products"
-                            },
-                            ...productOptIns,
-                            {
-                              label: "Done",
-                              "on-click-action": {
-                                name: "complete",
-                                payload: Object.fromEntries(
-                                  mockProducts.map((product, index) => [
-                                    `screen_0_${product.name.replace(/\s+/g, '_')}_${index}`,
-                                    `\${form.${product.name.replace(/\s+/g, '_')}_${product.id}}`
-                                  ])
-                                )
-                              },
-                              type: "Footer"
-                            }
-                          ],
-                          name: "flow_path",
-                          type: "Form"
-                        }
-                      ],
-                      type: "SingleColumnLayout"
-                    },
-                    terminal: true,
-                    title: "Icupa App"
-                  },
-                  ...productScreens
-                ],
-                version: "6.3"
+            children: [
+              {
+                type: "TextHeading",
+                text: "Our products"
+              },
+              ...productOptIns,
+              {
+                label: "Done",
+                "on-click-action": {
+                  name: "complete",
+                  payload: Object.fromEntries(
+                    mockProducts.map((product, index) => [
+                      `screen_0_${product.name.replace(/\s+/g, '_')}_${index}`,
+                      `\${form.${product.name.replace(/\s+/g, '_')}_${product.id}}`
+                    ])
+                  )
+                },
+                type: "Footer"
               }
-            }
+            ],
+            name: "flow_path",
+            type: "Form"
           }
-        ]
-      }
-    ]
-  };
+        ],
+        type: "SingleColumnLayout"
+      },
+      terminal: true,
+      title: "Icupa App"
+    },
+    ...productScreens
+  ],
+  version: "6.3"
+};
 }
 
 // Function to send the WhatsApp message with the flow
