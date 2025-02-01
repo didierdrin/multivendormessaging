@@ -334,6 +334,7 @@ function generateDynamicFlow(mockProducts) {
 
   // Generate the complete flow structure
   const flowStructure = {
+    name: "menuflow",
     screens: [
       {
         data: {},
