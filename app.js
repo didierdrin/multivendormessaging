@@ -349,7 +349,7 @@ function generateDynamicFlow(mockProducts) {
             type: "FLOW",
             text: "View Products",
             flow: {
-              name: "menuflow",
+              name: "menuoneflow",
               data: {
                 screens: [
                   {
