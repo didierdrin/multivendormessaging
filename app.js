@@ -420,9 +420,23 @@ function generateAndLogFlow() {
 // Generate and log the flow structure
 const flow = generateAndLogFlow();
 
+
+// WhatsApp API function
+const whatsappAPI = {
+  createFlow: async (flowStructure) => {
+    const response = await axios.post("https://graph.facebook.com/v19.0/191711990692012/message_templates", flowStructure, {
+      headers: {
+        Authorization: `Bearer ${ACCESS_TOKEN}`,
+        "Content-Type": "application/json"
+      }
+    });
+    return response.data;
+  }
+};
+
 // get the flowId
 async function updateWhatsAppFlow(flow) {
-    const response = await whatsappAPI.createFlow(flowStructure);
+    const response = await whatsappAPI.createFlow(flow);
     return response.flowId; 
 }
 
