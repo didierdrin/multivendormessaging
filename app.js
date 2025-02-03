@@ -23,7 +23,19 @@ const userContexts = new Map();
 
 //----------
 
+// Initialize flow ID at startup
+let globalFlowId = null;
 
+// Initialize the flow when starting the server
+async function initializeFlow() {
+  try {
+    const flow = generateAndLogFlow();
+    globalFlowId = await updateWhatsAppFlow(flow);
+    console.log('Flow initialized with ID:', globalFlowId);
+  } catch (error) {
+    console.error('Error initializing flow:', error);
+  }
+}
 
 
 // ____________________________________
@@ -47,8 +59,13 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       await sendCatalogRequest(phone, phoneNumberId);
       break;
     case "menu2":
-      console.log("User requested the menu.");
-      await sendSecondCatalog(phone, phoneNumberId, flowId);
+      console.log("User requested menu2 with flowId:", globalFlowId);
+      if (!globalFlowId) {
+        console.error('Flow ID not available');
+        return;
+      }
+      await sendSecondCatalog(phone, phoneNumberId, globalFlowId);
+      
       break;
     
 
@@ -383,31 +400,43 @@ function generateDynamicFlow(mockProducts) {
 
 // Function to send the WhatsApp message with the flow
 async function sendSecondCatalog(phone, phoneNumberId, flowId) {
+  if (!flowId) {
+    console.error('Flow ID is not available');
+    return;
+  }
+
   const payload = {
     type: "template",
     template: {
       name: "menuone",
       language: {
-        code: "en_US",
+        code: "en_US"
       },
       components: [
         {
           type: "button",
           sub_type: "flow",
-          index: "0",
+          index: 0,
           parameters: [
             {
-              type: "payload",
-              payload: flowId,
-            },
-          ],
-        },
-      ],
-    },
+              type: "flow",
+              flow_token: flowId, // Use flow_token instead of payload
+            }
+          ]
+        }
+      ]
+    }
   };
 
-  await sendWhatsAppMessage(phone, payload, phoneNumberId);
+  try {
+    await sendWhatsAppMessage(phone, payload, phoneNumberId);
+    console.log('Successfully sent catalog with flow ID:', flowId);
+  } catch (error) {
+    console.error('Error sending catalog:', error);
+    throw error;
+  }
 }
+
 
 // Example usage
 function generateAndLogFlow() {
@@ -433,9 +462,23 @@ const whatsappAPI = {
         `https://graph.facebook.com/${VERSION}/191711990692012/message_templates`,
         {
           name: flowStructure.name,
-          category: flowStructure.category,
-          language: "en_US",
-          components: flowStructure.components
+          category: "MARKETING",
+          components: [
+            {
+              type: "BODY",
+              text: "View our products"
+            },
+            {
+              type: "BUTTONS",
+              buttons: [
+                {
+                  type: "FLOW",
+                  flow: flowStructure
+                }
+              ]
+            }
+          ],
+          language: "en_US"
         },
         {
           headers: {
@@ -444,8 +487,13 @@ const whatsappAPI = {
           }
         }
       );
+      
+      if (!response.data.id) {
+        throw new Error('Flow ID not received in response');
+      }
+      
       console.log("Template creation response:", response.data);
-      return response.data;
+      return response.data.id; // Return the template ID which will be used as flow ID
     } catch (error) {
       console.error("Template creation error:", error.response?.data || error);
       throw error;
@@ -454,13 +502,21 @@ const whatsappAPI = {
 };
 
 
+
 // get the flowId
 async function updateWhatsAppFlow(flow) {
-    const response = await whatsappAPI.createFlow(flow);
-    return response.flowId; 
+  try {
+    const flowId = await whatsappAPI.createFlow(flow);
+    console.log('Successfully created flow with ID:', flowId);
+    return flowId;
+  } catch (error) {
+    console.error('Error updating WhatsApp flow:', error);
+    throw error;
+  }
 }
 
-const flowId = await updateWhatsAppFlow(flow);
+
+//const flowId = await updateWhatsAppFlow(flow);
 
 //-------------
 
@@ -506,4 +562,5 @@ app.post("/api/get-menu", async (req, res) => {
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
+    await initializeFlow();
 });
