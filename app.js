@@ -4,10 +4,19 @@ import axios from "axios";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
 import admin from "firebase-admin";
+import { readFileSync } from 'fs';
+import path from 'path';
+
+// Path to the service account key stored in Render secrets
+const serviceAccountPath = '/etc/secrets/serviceAccountKey.json';
+
+// Read and parse the service account JSON file
+const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+
 
 // Initialize Firebase Admin SDK (ensure GOOGLE_APPLICATION_CREDENTIALS is set or use a serviceAccount)
 admin.initializeApp({
-  credential: admin.credential.applicationDefault(),
+  credential: admin.credential.cert(serviceAccount),
   databaseURL: "https://icupa-396da.firebaseio.com"
 });
 const firestore = admin.firestore();
