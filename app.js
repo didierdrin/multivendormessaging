@@ -3,171 +3,194 @@ import bodyParser from "body-parser";
 import axios from "axios";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
+import admin from "firebase-admin";
+
+// Initialize Firebase Admin SDK (ensure GOOGLE_APPLICATION_CREDENTIALS is set or use a serviceAccount)
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  databaseURL: "https://icupa-396da.firebaseio.com"
+});
+const firestore = admin.firestore();
 
 const app = express();
 
-app.use(cors({
-  origin: ["http://localhost:3000", "https://multivendormessaging.onrender.com"],
-  methods: ["GET", "POST"],
-  credentials: true,
-}));
-
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "https://multivendormessaging.onrender.com"
+    ],
+    methods: ["GET", "POST"],
+    credentials: true
+  })
+);
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
-const ACCESS_TOKEN = "EAAGHrMn6uugBO9xlSTNU1FsbnZB7AnBLCvTlgZCYQDZC8OZA7q3nrtxpxn3VgHiT8o9KbKQIyoPNrESHKZCq2c9B9lvNr2OsT8YDBewaDD1OzytQd74XlmSOgxZAVL6TEQpDT43zZCZBwQg9AZA5QPeksUVzmAqTaoNyIIaaqSvJniVmn6dW1rw88dbZAyR6VZBMTTpjQZDZD";
+// --- WhatsApp & Global Config ---
+const ACCESS_TOKEN =
+  "EAAGHrMn6uugBO9xlSTNU1FsbnZB7AnBLCvTlgZCYQDZC8OZA7q3nrtxpxn3VgHiT8o9KbKQIyoPNrESHKZCq2c9B9lvNr2OsT8YDBewaDD1OzytQd74XlmSOgxZAVL6TEQpDT43zZCZBwQg9AZA5QPeksUVzmAqTaoNyIIaaqSvJniVmn6dW1rw88dbZAyR6VZBMTTpjQZDZD";
 const VERSION = "v22.0";
 
+// In-memory contexts per phone (to track order & ordering stage)
 const userContexts = new Map();
-const processedMessages = new Set(); // <-- Ensure this is declared
+const processedMessages = new Set(); // Prevent duplicate processing
 
+// --- Helper: Firestore Data Fetching ---
+// Fetches all docs from a given collection and returns an object mapping doc.id to data.
+async function fetchData(collectionName) {
+  const snapshot = await firestore.collection(collectionName).get();
+  const docs = {};
+  snapshot.forEach((doc) => {
+    docs[doc.id] = { id: doc.id, ...doc.data() };
+  });
+  return docs;
+}
 
-// -------------
-
-// 5. Send WhatsApp Message with Deep Link to External Webview (Multi‑Select Menu)
-//
-async function sendDeepLinkMessage(phone, phoneNumberId) {
-  // Generate a unique session token
-  const sessionToken = uuidv4();
-  // Create the deep link URL for your external menu page.
-  const deepLinkUrl = `https://multivendormessaging.onrender.com/menu?session=${sessionToken}`;
-
-  const payload = {
-    type: "text",
-    text: {
-      body: `Hello! Please click the link to view our menu and select your items: ${deepLinkUrl}`
-    }
-  };
-
+// --- 1. Send Menu Message (Interactive List) ---
+// This function fetches the merged menu items from Firestore and sends an interactive list message.
+async function sendMenuMessage(phone, phoneNumberId) {
+  // (For clarity, we log errors if any occur during Firestore fetch.)
   try {
+    // Fetch your collections in parallel.
+    const [vendorGoods, vendors, goods, categories, vendorProducts] =
+      await Promise.all([
+        fetchData("vendorGoods"),
+        fetchData("vendors"),
+        fetchData("goods"),
+        fetchData("categories"),
+        fetchData("vendorProducts")
+      ]);
+
+    // Merge data similar to your HTML sample.
+    const mergedData = Object.values(vendorGoods).map((goodsItem) => {
+      // Try to find a matching vendorProducts record.
+      const vendorProduct = Object.values(vendorProducts).find(
+        (vp) => vp.id === goodsItem.product
+      );
+      // Look up the product details from the "goods" collection.
+      const good = vendorProduct
+        ? goods[vendorProduct.product]
+        : goods[goodsItem.product];
+      const vendor = vendors[goodsItem.vendor];
+      const categoriesMapped = (goodsItem.categories || []).map(
+        (catId) => (categories[catId] && categories[catId].name?.en) || "Unknown Category"
+      );
+
+      return {
+        id: goodsItem.id, // Use vendorGoods ID as the product identifier.
+        productName: good?.name || "Unknown Product",
+        vendor: vendor?.name || "Unknown Vendor",
+        price: goodsItem.price || vendorProduct?.price || 0,
+        categories: categoriesMapped,
+        stock: goodsItem.stock || vendorProduct?.stock || 0,
+        createdOn: goodsItem.createdOn
+          ? // If createdOn is a Firestore Timestamp, convert it.
+            (goodsItem.createdOn.toDate ? goodsItem.createdOn.toDate().toLocaleString() : goodsItem.createdOn)
+          : "Unknown Date"
+      };
+    });
+
+    // Build list rows for the interactive message.
+    const rows = mergedData.map((item) => ({
+      id: item.id, // When selected, this ID is returned.
+      title: item.productName,
+      description: `Vendor: ${item.vendor} | Price: ${item.price} | Categories: ${item.categories.join(", ")}`
+    }));
+
+    // Build the interactive list payload.
+    const payload = {
+      type: "interactive",
+      interactive: {
+        type: "list",
+        header: {
+          type: "text",
+          text: "Menu Items"
+        },
+        body: {
+          text: "Select a product to add to your order:"
+        },
+        action: {
+          button: "Select Product",
+          sections: [
+            {
+              title: "Products",
+              rows: rows
+            }
+          ]
+        }
+      }
+    };
+
     await sendWhatsAppMessage(phone, payload, phoneNumberId);
-    console.log('Deep link message sent successfully.');
   } catch (error) {
-    console.error('Error sending deep link message:', error);
-    throw error;
+    console.error("Error in sendMenuMessage:", error.message);
   }
 }
 
-//
-// 9. External Webview Routes for Multi‑Select Menu
-//
-app.get("/menu", (req, res) => {
-  // Extract the session token from query parameters
-  const session = req.query.session || "";
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Menu</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-        h1, h2 { color: #333; }
-        label { display: block; margin-bottom: 10px; }
-        .section { margin-bottom: 20px; }
-      </style>
-    </head>
-    <body>
-      <h1>Our Menu</h1>
-      <form action="/submit-menu" method="POST">
-        <!-- Pass along the session token -->
-        <input type="hidden" name="session" value="${session}" />
-
-        <div class="section">
-          <h2>Food - Starters</h2>
-          <label>
-            <input type="checkbox" name="items" value="F1" />
-            Spring Rolls - 40.50
-          </label>
-          <label>
-            <input type="checkbox" name="items" value="F2" />
-            Chicken Wings - 60.00
-          </label>
-        </div>
-
-        <div class="section">
-          <h2>Food - Main Course</h2>
-          <label>
-            <input type="checkbox" name="items" value="F3" />
-            Beef Burger - 80.00
-          </label>
-        </div>
-
-        <div class="section">
-          <h2>Drinks - Beers</h2>
-          <label>
-            <input type="checkbox" name="items" value="B1" />
-            Heineken - 30.00
-          </label>
-        </div>
-
-        <div class="section">
-          <h2>Drinks - Cocktails</h2>
-          <label>
-            <input type="checkbox" name="items" value="C1" />
-            Mojito - 60.50
-          </label>
-        </div>
-
-        <button type="submit">Submit</button>
-      </form>
-    </body>
-    </html>
-  `);
-});
-
-app.post("/submit-menu", (req, res) => {
-  const session = req.body.session || "";
-  let selectedItems = req.body.items;
-  
-  // Ensure selectedItems is always an array
-  if (!Array.isArray(selectedItems)) {
-    selectedItems = selectedItems ? [selectedItems] : [];
-  }
-  
-  console.log(`Session: ${session}`);
-  console.log('Selected items:', selectedItems);
-
-  // Process the selected items as needed (e.g., store in a database)
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <title>Thank You!</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 20px; }
-      </style>
-    </head>
-    <body>
-      <h1>Thank you for your selection!</h1>
-      <p>You have selected: ${selectedItems.join(', ') || 'No items'}</p>
-    </body>
-    </html>
-  `);
-});
-
-
-async function sendTestMessage(phone, phoneNumberId) {
-  
-
-  // Note: The parameter key has been changed from "flow_token" to "payload"
+// --- 2. Send Order Prompt ---
+// After a user selects a product, ask if they want to add more items.
+async function sendOrderPrompt(phone, phoneNumberId) {
   const payload = {
-    type: "text",
-    text: {
-      body: "This is the test message",
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: {
+        text: "Would you like to add more items to your order?"
+      },
+      action: {
+        buttons: [
+          {
+            type: "reply",
+            reply: {
+              id: "MORE",
+              title: "More"
+            }
+          },
+          {
+            type: "reply",
+            reply: {
+              id: "ORDER",
+              title: "That's It"
+            }
+          }
+        ]
+      }
     }
   };
 
-  try {
-    await sendWhatsAppMessage(phone, payload, phoneNumberId);
-    console.log('Successfully sent catalog with flow ID:', globalFlowId);
-  } catch (error) {
-    console.error('Error sending catalog:', error);
-    throw error;
-  }
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
-//
-// 4. Send WhatsApp Message (generic)
-//
+// --- 3. Send Order Summary ---
+// When the user indicates they are done, send a summary of the items ordered.
+async function sendOrderSummary(phone, phoneNumberId) {
+  const userContext = userContexts.get(phone) || {};
+  const order = userContext.order || [];
+
+  if (order.length === 0) {
+    await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { body: "You have not ordered any items yet." }
+    }, phoneNumberId);
+    return;
+  }
+
+  // For simplicity, we list only the product IDs that were ordered.
+  // In a real implementation, you might store more details (e.g. product name, price) in the context.
+  const summaryText =
+    "Order Summary:\n" + order.map((id, idx) => `${idx + 1}. Product ID: ${id}`).join("\n");
+
+  await sendWhatsAppMessage(phone, {
+    type: "text",
+    text: { body: summaryText }
+  }, phoneNumberId);
+
+  // Optionally clear the user's context.
+  userContexts.delete(phone);
+}
+
+// --- 4. Generic WhatsApp Message Sender ---
 const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
   try {
     const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
@@ -188,73 +211,47 @@ const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
     console.log(`Message sent successfully from ${phoneNumberId}:`, response.data);
     return response.data;
   } catch (error) {
-    console.error(`WhatsApp message sending error from ${phoneNumberId}:`, error.response?.data || error.message);
+    console.error(
+      `WhatsApp message sending error from ${phoneNumberId}:`,
+      error.response?.data || error.message
+    );
     throw error;
   }
 };
 
-const dynamicData = {
-  product1_name: "Fanta Orange 33 CL - 500 RWF",
-  product1_details: "Fanta Orange 33 CL Bralirwa\nSoft drink, glass bottle.",
-  product1_image: "iVBORw0KGgU5ErkJggg==",
-  product2_name: "Fanta Citron 50 CL - 800 RWF",
-  product2_details: "Fanta Citron 50 CL Bralirwa\nSoft drink, plastic bottle.",
-  product2_image: "iVBORw0ujklajdsfljasdjfC",
-  product3_name: "Coca Cola 50 CL - 800 RWF",
-  product3_details: "Coca Cola 50 CL Bralirwa\nSoft drink, plastic bottle.",
-  product3_image: "base64string3"
-};
+// --- 5. Handling Interactive Replies ---
+// When a user selects a menu item or taps a button, process the interactive response.
+async function handleInteractiveMessage(message, phone, phoneNumberId) {
+  // Check for a list reply (menu selection)
+  if (message.interactive?.list_reply) {
+    const productId = message.interactive.list_reply.id;
+    console.log(`User selected product: ${productId}`);
 
-async function sendThirdCatalog(phone, phoneNumberId, flowIdUnique, dynamicData) {
-  if (!flowIdUnique) {
-    console.error('Flow ID is not available');
-    return;
+    // Get or create the user context
+    let userContext = userContexts.get(phone) || { order: [] };
+    userContext.order.push(productId);
+    userContexts.set(phone, userContext);
+
+    // Follow up with the order prompt (ask "More" or "That's It")
+    await sendOrderPrompt(phone, phoneNumberId);
   }
+  // Check for a button reply (More or Order)
+  else if (message.interactive?.button_reply) {
+    const buttonId = message.interactive.button_reply.id;
+    console.log(`Button reply received: ${buttonId}`);
 
-  // Combine the flow ID and dynamic product data into a single payload object.
-  // The keys here should match the placeholder names in your published template.
-  const dynamicPayload = {
-    flowId: flowIdUnique,
-    ...dynamicData
-  };
-
-  // Depending on your integration, the WhatsApp API may expect a JSON string.
-  // We use JSON.stringify here to be safe.
-  const payload = {
-    type: "template",
-    template: {
-      name: "menuonedynamic", // Must match the template name published in your Meta dashboard.
-      language: { code: "en_US" },
-      components: [
-        {
-          type: "button",
-          sub_type: "flow",
-          index: "0",
-          parameters: [
-            {
-              type: "payload",
-              payload: JSON.stringify(dynamicPayload)
-            }
-          ]
-        }
-      ]
+    if (buttonId === "MORE") {
+      // Send the menu again for an additional selection
+      await sendMenuMessage(phone, phoneNumberId);
+    } else if (buttonId === "ORDER") {
+      // Show order summary
+      await sendOrderSummary(phone, phoneNumberId);
     }
-  };
-
-  try {
-    await sendWhatsAppMessage(phone, payload, phoneNumberId);
-    console.log('Successfully sent catalog with flow ID:', flowIdUnique);
-  } catch (error) {
-    console.error('Error sending catalog:', error);
-    throw error;
   }
 }
 
-
-
-//
-// 5. Handle Incoming Text Messages
-//
+// --- 6. Handle Incoming Text Messages ---
+// (For non-interactive messages and commands.)
 const handleTextMessages = async (message, phone, phoneNumberId) => {
   const messageText = message.text.body.trim().toLowerCase();
 
@@ -263,45 +260,42 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       userContexts.clear();
       console.log("All user contexts reset.");
       break;
-
     case "clear":
       userContexts.delete(phone);
       console.log("User context reset.");
       break;
-
-    case "webmenu":
-      // Trigger sending the deep link message for the external web view
-      await sendDeepLinkMessage(phone, phoneNumberId);
-      break;
-      
     case "test":
-      await sendTestMessage(phone, phoneNumberId); //globalFlowId
+      await sendWhatsAppMessage(
+        phone,
+        {
+          type: "text",
+          text: { body: "This is the test message" }
+        },
+        phoneNumberId
+      );
       break;
-      
-    
-    case "menu3":
-      await sendThirdCatalog(phone, phoneNumberId, "3801441796771301", dynamicData); 
+    case "menu":
+      // Start ordering by sending the menu interactive list.
+      await sendMenuMessage(phone, phoneNumberId);
       break;
-
     default:
-      console.log(`Received unrecognized message: ${messageText}`);
+      console.log(`Received unrecognized text message: ${messageText}`);
   }
 };
 
+// --- 7. Main Message Handler ---
+// Now we handle both text and interactive message types.
 async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
-  switch (message.type) {
-    case "text":
-      await handleTextMessages(message, phone, phoneNumberId);
-      break;
-
-    default:
-      console.log("Unrecognized message type:", message.type);
+  if (message.type === "text") {
+    await handleTextMessages(message, phone, phoneNumberId);
+  } else if (message.type === "interactive") {
+    await handleInteractiveMessage(message, phone, phoneNumberId);
+  } else {
+    console.log("Unrecognized message type:", message.type);
   }
 }
 
-//
-// 6. Webhook Endpoint
-//
+// --- 8. Webhook Endpoint ---
 app.post("/webhook", async (req, res) => {
   if (req.body.object === "whatsapp_business_account") {
     const changes = req.body.entry?.[0]?.changes?.[0];
@@ -320,10 +314,10 @@ app.post("/webhook", async (req, res) => {
       console.log("Duplicate message ignored:", uniqueMessageId);
       return res.sendStatus(200);
     }
-
     processedMessages.add(uniqueMessageId);
 
     try {
+      // Use your known phoneNumberId (e.g., "189923527537354") or adjust as needed.
       if (phoneNumberId === "189923527537354") {
         await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
       } else {
@@ -332,16 +326,14 @@ app.post("/webhook", async (req, res) => {
     } catch (err) {
       console.error("Error processing message:", err.message);
     } finally {
+      // Clean up duplicate tracking after 5 minutes
       setTimeout(() => processedMessages.delete(uniqueMessageId), 300000);
     }
   }
-
   res.sendStatus(200);
 });
 
-//
-// 7. Webhook Verification
-//
+// --- 9. Webhook Verification ---
 app.get("/webhook", (req, res) => {
   const VERIFY_TOKEN = "icupatoken31";
   const mode = req.query["hub.mode"];
@@ -358,9 +350,7 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-//
-// 8. Start the Server & Initialize the Flow
-//
+// --- 10. Start the Server ---
 const startServer = async () => {
   try {
     const port = process.env.PORT || 5000;
@@ -368,7 +358,7 @@ const startServer = async () => {
       console.log(`Server running on port ${port}`);
     });
   } catch (error) {
-    console.error('Server startup failed:', error);
+    console.error("Server startup failed:", error);
     process.exit(1);
   }
 };
