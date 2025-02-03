@@ -96,7 +96,7 @@ function generateDynamicFlow(mockProducts) {
 
   // Note: The "data" field has been removed from the first component.
   return {
-    name: "menufourflow",
+    name: "menufiveflow",
     language: { code: "en_US" },
     categories: ["SHOPPING"],
     components: [
@@ -338,7 +338,7 @@ async function sendThirdCatalog(phone, phoneNumberId, flowIdUnique, dynamicData)
   const payload = {
     type: "template",
     template: {
-      name: "menuone", // Must match the template name published in your Meta dashboard.
+      name: "menuonedynamic", // Must match the template name published in your Meta dashboard.
       language: { code: "en_US" },
       components: [
         {
