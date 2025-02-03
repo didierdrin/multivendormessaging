@@ -220,7 +220,7 @@ async function initializeFlow(maxRetries = 3) {
 //
 // 3. Send WhatsApp Message With Flow Template (menu2)
 //
-async function sendSecondCatalog(phone, phoneNumberId, flowId) {
+async function sendSecondCatalog(phone, phoneNumberId, flowIdUnique) {
   if (!flowId) {
     console.error('Flow ID is not available');
     return;
@@ -240,7 +240,7 @@ async function sendSecondCatalog(phone, phoneNumberId, flowId) {
           parameters: [
             {
               type: "payload",
-              payload: flowId
+              payload: flowIdUnique
             }
           ]
         }
@@ -308,7 +308,7 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
         console.error('Flow ID not available');
         return;
       }
-      await sendSecondCatalog(phone, phoneNumberId, globalFlowId);
+      await sendSecondCatalog(phone, phoneNumberId, 974841610643366); //globalFlowId
       break;
 
     default:
