@@ -217,6 +217,8 @@ async function initializeFlow(maxRetries = 2) {
   }
 }
 
+
+
 //
 // 3. Send WhatsApp Message With Flow Template (menu2)
 //
@@ -306,6 +308,65 @@ const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
   }
 };
 
+const dynamicData = {
+  product1_name: "Fanta Orange 33 CL - 500 RWF",
+  product1_details: "Fanta Orange 33 CL Bralirwa\nSoft drink, glass bottle.",
+  product1_image: "iVBORw0KGgU5ErkJggg==",
+  product2_name: "Fanta Citron 50 CL - 800 RWF",
+  product2_details: "Fanta Citron 50 CL Bralirwa\nSoft drink, plastic bottle.",
+  product2_image: "iVBORw0ujklajdsfljasdjfC",
+  product3_name: "Coca Cola 50 CL - 800 RWF",
+  product3_details: "Coca Cola 50 CL Bralirwa\nSoft drink, plastic bottle.",
+  product3_image: "base64string3"
+};
+
+async function sendThirdCatalog(phone, phoneNumberId, flowIdUnique, dynamicData) {
+  if (!flowIdUnique) {
+    console.error('Flow ID is not available');
+    return;
+  }
+
+  // Combine the flow ID and dynamic product data into a single payload object.
+  // The keys here should match the placeholder names in your published template.
+  const dynamicPayload = {
+    flowId: flowIdUnique,
+    ...dynamicData
+  };
+
+  // Depending on your integration, the WhatsApp API may expect a JSON string.
+  // We use JSON.stringify here to be safe.
+  const payload = {
+    type: "template",
+    template: {
+      name: "menuone", // Must match the template name published in your Meta dashboard.
+      language: { code: "en_US" },
+      components: [
+        {
+          type: "button",
+          sub_type: "flow",
+          index: "0",
+          parameters: [
+            {
+              type: "payload",
+              payload: JSON.stringify(dynamicPayload)
+            }
+          ]
+        }
+      ]
+    }
+  };
+
+  try {
+    await sendWhatsAppMessage(phone, payload, phoneNumberId);
+    console.log('Successfully sent catalog with flow ID:', flowIdUnique);
+  } catch (error) {
+    console.error('Error sending catalog:', error);
+    throw error;
+  }
+}
+
+
+
 //
 // 5. Handle Incoming Text Messages
 //
@@ -335,6 +396,9 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
         return;
       }
       await sendSecondCatalog(phone, phoneNumberId, globalFlowId); //globalFlowId
+      break;
+    case "menu3":
+      await sendThirdCatalog(phone, phoneNumberId, "3801441796771301", dynamicData); 
       break;
 
     default:
