@@ -137,7 +137,7 @@ const allRows = mergedData.map((item) => {
 
     // Get rows for the current page
     //let rows = paginateRows(allRows, currentPage, 10);
-    let rows = allRows.slice(0, 10);
+    let rows = allRows.slice(0, 9);
     
     // Check if there are more items after this page.
     const hasMore = (currentPage + 1) * 10 < allRows.length;
