@@ -20,244 +20,129 @@ const VERSION = "v22.0";
 const userContexts = new Map();
 const processedMessages = new Set(); // <-- Ensure this is declared
 
-let globalFlowId = null; // Initialize flow ID at startup
 
-// Mock product list
-const mockProducts = [
-  {
-    id: "prod1",
-    name: "Fanta Orange 33 CL",
-    description: "Soft drink, glass bottle.",
-    imageUrl: "iVBORw0KGgU5ErkJggg==", // Your base64 image string
-    price: "500 RWF"
-  },
-  {
-    id: "prod2",
-    name: "Fanta Citron 50 CL",
-    description: "Soft drink, plastic bottle.",
-    imageUrl: "iVBORw0ujklajdsfljasdjfC", // Your base64 image string
-    price: "800 RWF"
-  },
-  {
-    id: "prod3",
-    name: "Coca Cola 50 CL",
-    description: "Soft drink, plastic bottle.",
-    imageUrl: "base64string3", // Your base64 image string
-    price: "800 RWF"
-  }
-];
+// -------------
 
+// 5. Send WhatsApp Message with Deep Link to External Webview (Multi‑Select Menu)
 //
-// 1. Generate Dynamic Flow Structure
-//
-function generateDynamicFlow(mockProducts) {
-  // Create opt-in options for each product
-  const productOptIns = mockProducts.map((product, index) => ({
-    label: `${product.name} - ${product.price}`,
-    name: `${product.name.replace(/\s+/g, '_')}_${product.id}`,
-    required: true,
-    type: "OptIn",
-    "on-click-action": {
-      name: "navigate",
-      next: {
-        name: `OPTIN_SCREEN_screen_${product.id}`,
-        type: "screen"
-      },
-      payload: {}
-    }
-  }));
+async function sendDeepLinkMessage(phone, phoneNumberId) {
+  // Generate a unique session token
+  const sessionToken = uuidv4();
+  // Create the deep link URL for your external menu page.
+  const deepLinkUrl = `https://multivendormessaging.onrender.com/menu?session=${sessionToken}`;
 
-  // Create a detail screen for each product
-  const productScreens = mockProducts.map(product => ({
-    id: `OPTIN_SCREEN_screen_${product.id}`,
-    layout: {
-      children: [
-        {
-          children: [
-            {
-              text: `${product.name}\n${product.description}\nPrice: ${product.price}`,
-              type: "TextBody"
-            },
-            {
-              height: 400,
-              "scale-type": "contain",
-              src: product.imageUrl,
-              type: "Image"
-            }
-          ],
-          name: "flow_path",
-          type: "Form"
-        }
-      ],
-      type: "SingleColumnLayout"
-    },
-    title: "Details"
-  }));
-
-  // Note: The "data" field has been removed from the first component.
-  return {
-    name: "menufiveflow",
-    language: { code: "en_US" },
-    categories: ["SHOPPING"],
-    components: [
-      {
-        id: "QUESTION_THREE",
-        layout: {
-          children: [
-            {
-              children: [
-                { type: "TextHeading", text: "Our products" },
-                ...productOptIns,
-                {
-                  label: "Done",
-                  "on-click-action": {
-                    name: "complete",
-                    payload: Object.fromEntries(
-                      mockProducts.map((product, index) => [
-                        `screen_0_${product.name.replace(/\s+/g, '_')}_${index}`,
-                        `\${form.${product.name.replace(/\s+/g, '_')}_${product.id}}`
-                      ])
-                    )
-                  },
-                  type: "Footer"
-                }
-              ],
-              name: "flow_path",
-              type: "Form"
-            }
-          ],
-          type: "SingleColumnLayout"
-        },
-        terminal: true,
-        title: "Icupa App"
-      },
-      ...productScreens
-    ],
-    version: "6.3"
-  };
-}
-
-function generateAndLogFlow() {
-  try {
-    const dynamicFlow = generateDynamicFlow(mockProducts);
-    console.log('Generated Flow Structure:', JSON.stringify(dynamicFlow, null, 2));
-    return dynamicFlow;
-  } catch (error) {
-    console.error('Error generating flow:', error);
-    throw error;
-  }
-}
-
-//
-// 2. Create WhatsApp Flow via the API
-//
-const whatsappAPI = {
-  createFlow: async (flowStructure) => {
-    try {
-      console.log('Attempting to create flow with structure:', JSON.stringify(flowStructure, null, 2));
-
-      const flowResponse = await axios.post(
-        `https://graph.facebook.com/${VERSION}/191711990692012/flows`,
-        flowStructure,
-        {
-          headers: {
-            Authorization: `Bearer ${ACCESS_TOKEN}`,
-            "Content-Type": "application/json"
-          }
-        }
-      );
-
-      console.log('Flow creation response:', JSON.stringify(flowResponse.data, null, 2));
-
-      if (!flowResponse.data.id) {
-        throw new Error('Flow ID not received in response');
-      }
-
-      return flowResponse.data.id;
-    } catch (error) {
-      console.error('Error creating flow:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-      throw error;
-    }
-  }
-};
-
-async function initializeFlow(maxRetries = 2) {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`Attempt ${attempt} to initialize flow`);
-      const flow = generateAndLogFlow();
-
-      if (!flow.name || !flow.components || !flow.language) {
-        throw new Error('Invalid flow structure generated');
-      }
-
-      console.log('Generated valid flow structure');
-      const flowId = await whatsappAPI.createFlow(flow);
-
-      if (!flowId) {
-        throw new Error('Flow ID not received');
-      }
-
-      console.log('Successfully initialized flow with ID:', flowId);
-      return flowId;
-    } catch (error) {
-      console.error(`Flow initialization attempt ${attempt} failed:`, error);
-
-      if (attempt === maxRetries) {
-        console.error('Maximum retry attempts reached');
-        throw error;
-      }
-      // Exponential backoff
-      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-    }
-  }
-}
-
-
-
-//
-// 3. Send WhatsApp Message With Flow Template (menu2)
-//
-async function sendSecondCatalog(phone, phoneNumberId, flowIdUnique) {
-  if (!flowIdUnique) {
-    console.error('Flow ID is not available');
-    return;
-  }
-
-  // Note: The parameter key has been changed from "flow_token" to "payload"
   const payload = {
-    type: "template",
-    template: {
-      name: "menuone", // This must match the template name in your Meta dashboard.
-      language: { code: "en_US" },
-      components: [
-        {
-          type: "button",
-          sub_type: "flow",
-          index: "0",
-          parameters: [
-            {
-              type: "payload",
-              payload: flowIdUnique
-            }
-          ]
-        }
-      ]
+    type: "text",
+    text: {
+      body: `Hello! Please click the link to view our menu and select your items: ${deepLinkUrl}`
     }
   };
 
   try {
     await sendWhatsAppMessage(phone, payload, phoneNumberId);
-    console.log('Successfully sent catalog with flow ID:', globalFlowId);
+    console.log('Deep link message sent successfully.');
   } catch (error) {
-    console.error('Error sending catalog:', error);
+    console.error('Error sending deep link message:', error);
     throw error;
   }
 }
+
+//
+// 9. External Webview Routes for Multi‑Select Menu
+//
+app.get("/menu", (req, res) => {
+  // Extract the session token from query parameters
+  const session = req.query.session || "";
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Menu</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1, h2 { color: #333; }
+        label { display: block; margin-bottom: 10px; }
+        .section { margin-bottom: 20px; }
+      </style>
+    </head>
+    <body>
+      <h1>Our Menu</h1>
+      <form action="/submit-menu" method="POST">
+        <!-- Pass along the session token -->
+        <input type="hidden" name="session" value="${session}" />
+
+        <div class="section">
+          <h2>Food - Starters</h2>
+          <label>
+            <input type="checkbox" name="items" value="F1" />
+            Spring Rolls - 40.50
+          </label>
+          <label>
+            <input type="checkbox" name="items" value="F2" />
+            Chicken Wings - 60.00
+          </label>
+        </div>
+
+        <div class="section">
+          <h2>Food - Main Course</h2>
+          <label>
+            <input type="checkbox" name="items" value="F3" />
+            Beef Burger - 80.00
+          </label>
+        </div>
+
+        <div class="section">
+          <h2>Drinks - Beers</h2>
+          <label>
+            <input type="checkbox" name="items" value="B1" />
+            Heineken - 30.00
+          </label>
+        </div>
+
+        <div class="section">
+          <h2>Drinks - Cocktails</h2>
+          <label>
+            <input type="checkbox" name="items" value="C1" />
+            Mojito - 60.50
+          </label>
+        </div>
+
+        <button type="submit">Submit</button>
+      </form>
+    </body>
+    </html>
+  `);
+});
+
+app.post("/submit-menu", (req, res) => {
+  const session = req.body.session || "";
+  let selectedItems = req.body.items;
+  
+  // Ensure selectedItems is always an array
+  if (!Array.isArray(selectedItems)) {
+    selectedItems = selectedItems ? [selectedItems] : [];
+  }
+  
+  console.log(`Session: ${session}`);
+  console.log('Selected items:', selectedItems);
+
+  // Process the selected items as needed (e.g., store in a database)
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Thank You!</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+      </style>
+    </head>
+    <body>
+      <h1>Thank you for your selection!</h1>
+      <p>You have selected: ${selectedItems.join(', ') || 'No items'}</p>
+    </body>
+    </html>
+  `);
+});
 
 
 async function sendTestMessage(phone, phoneNumberId) {
@@ -384,19 +269,16 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User context reset.");
       break;
 
-    
+    case "webmenu":
+      // Trigger sending the deep link message for the external web view
+      await sendDeepLinkMessage(phone, phoneNumberId);
+      break;
+      
     case "test":
       await sendTestMessage(phone, phoneNumberId); //globalFlowId
       break;
       
-    case "menu2":
-      console.log("User requested menu2 with flowId:", globalFlowId);
-      if (!globalFlowId) {
-        console.error('Flow ID not available');
-        return;
-      }
-      await sendSecondCatalog(phone, phoneNumberId, globalFlowId); //globalFlowId
-      break;
+    
     case "menu3":
       await sendThirdCatalog(phone, phoneNumberId, "3801441796771301", dynamicData); 
       break;
@@ -481,14 +363,9 @@ app.get("/webhook", (req, res) => {
 //
 const startServer = async () => {
   try {
-    globalFlowId = await initializeFlow();
-    if (!globalFlowId) {
-      throw new Error('Failed to initialize flow');
-    }
-
     const port = process.env.PORT || 5000;
     app.listen(port, () => {
-      console.log(`Server running on port ${port} with flow ID: ${globalFlowId}`);
+      console.log(`Server running on port ${port}`);
     });
   } catch (error) {
     console.error('Server startup failed:', error);
