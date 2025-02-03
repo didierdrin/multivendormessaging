@@ -56,12 +56,19 @@ async function fetchData(collectionName) {
   return docs;
 }
 
+
+// Returns rows for the current page (max 10 rows per page)
+function paginateRows(rows, page = 0, pageSize = 10) {
+  const start = page * pageSize;
+  return rows.slice(start, start + pageSize);
+}
+
+
 // --- 1. Send Menu Message (Interactive List) ---
 // This function fetches the merged menu items from Firestore and sends an interactive list message.
 async function sendMenuMessage(phone, phoneNumberId) {
-  // (For clarity, we log errors if any occur during Firestore fetch.)
   try {
-    // Fetch your collections in parallel.
+    // Fetch and merge data from Firestore as before...
     const [vendorGoods, vendors, goods, categories, vendorProducts] =
       await Promise.all([
         fetchData("vendorGoods"),
@@ -71,13 +78,10 @@ async function sendMenuMessage(phone, phoneNumberId) {
         fetchData("vendorProducts")
       ]);
 
-    // Merge data similar to your HTML sample.
     const mergedData = Object.values(vendorGoods).map((goodsItem) => {
-      // Try to find a matching vendorProducts record.
       const vendorProduct = Object.values(vendorProducts).find(
         (vp) => vp.id === goodsItem.product
       );
-      // Look up the product details from the "goods" collection.
       const good = vendorProduct
         ? goods[vendorProduct.product]
         : goods[goodsItem.product];
@@ -85,58 +89,90 @@ async function sendMenuMessage(phone, phoneNumberId) {
       const categoriesMapped = (goodsItem.categories || []).map(
         (catId) => (categories[catId] && categories[catId].name?.en) || "Unknown Category"
       );
-
       return {
-        id: goodsItem.id, // Use vendorGoods ID as the product identifier.
+        id: goodsItem.id,
         productName: good?.name || "Unknown Product",
         vendor: vendor?.name || "Unknown Vendor",
         price: goodsItem.price || vendorProduct?.price || 0,
         categories: categoriesMapped,
         stock: goodsItem.stock || vendorProduct?.stock || 0,
         createdOn: goodsItem.createdOn
-          ? // If createdOn is a Firestore Timestamp, convert it.
-            (goodsItem.createdOn.toDate ? goodsItem.createdOn.toDate().toLocaleString() : goodsItem.createdOn)
+          ? (goodsItem.createdOn.toDate ? goodsItem.createdOn.toDate().toLocaleString() : goodsItem.createdOn)
           : "Unknown Date"
       };
     });
 
-    
+    // Maximum lengths per WhatsApp guidelines removed 1 character for safer (or your recommendations)
+const MAX_TITLE_LENGTH = 23;
+const MAX_DESCRIPTION_LENGTH = 71;
 
-    // Build list rows for the interactive message.
-let rows = mergedData.map((item) => ({
-  id: item.id, // When selected, this ID is returned.
-  title: item.productName[20],
-  description: `Vendor: ${item.vendor} | Price: ${item.price} | Categories: ${item.categories.join(", ")}`
-}));
+// Helper function to truncate strings and append "..." if truncated
+function truncateString(str, maxLength) {
+  if (!str) return "";
+  return str.length > maxLength ? str.substring(0, maxLength - 3) + "..." : str;
+}
 
-// Limit the number of rows to 10
-rows = rows.slice(0, 10);
+    // Build list rows for all items.
+    // When mapping your mergedData to list rows, apply the truncation:
+const allRows = mergedData.map((item) => {
+  // Truncate product name for the title
+  const truncatedTitle = truncateString(item.productName, MAX_TITLE_LENGTH);
+  
+  // Compose the full description string
+  const fullDescription = `Vendor: ${item.vendor} | Price: ${item.price} | Categories: ${item.categories.join(", ")}`;
+  
+  // Truncate the description to the maximum allowed length
+  const truncatedDescription = truncateString(fullDescription, MAX_DESCRIPTION_LENGTH);
+  
+  return {
+    id: item.id, // When selected, this ID is returned.
+    title: truncatedTitle,
+    description: truncatedDescription
+  };
+});
 
-const payload = {
-  type: "interactive",
-  interactive: {
-    type: "list",
-    header: {
-      type: "text",
-      text: "Menu Items"
-    },
-    body: {
-      text: "Select a product to add to your order:"
-    },
-    action: {
-      button: "Select Product",
-      sections: [
-        {
-          title: "Products",
-          rows: rows
-        }
-      ]
+    // Retrieve the current page from user context; default to 0.
+    let userContext = userContexts.get(phone) || { order: [], page: 0 };
+    const currentPage = userContext.page || 0;
+
+    // Get rows for the current page
+    let rows = paginateRows(allRows, currentPage, 10);
+
+    // Check if there are more items after this page.
+    const hasMore = (currentPage + 1) * 10 < allRows.length;
+    if (hasMore) {
+      // Add an extra row for "More Items"
+      rows.push({
+        id: "MORE_ITEMS",
+        title: "More Items",
+        description: "Tap to see more products"
+      });
     }
-  }
-};
 
-await sendWhatsAppMessage(phone, payload, phoneNumberId);
+    const payload = {
+      type: "interactive",
+      interactive: {
+        type: "list",
+        header: {
+          type: "text",
+          text: "Menu Items"
+        },
+        body: {
+          text: "Select a product to add to your order:"
+        },
+        action: {
+          button: "Select Product",
+          sections: [
+            {
+              title: "Products",
+              rows: rows
+            }
+          ]
+        }
+      }
+    };
 
+    await sendWhatsAppMessage(phone, payload, phoneNumberId);
   } catch (error) {
     console.error("Error in sendMenuMessage:", error.message);
   }
@@ -238,31 +274,40 @@ const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
 async function handleInteractiveMessage(message, phone, phoneNumberId) {
   // Check for a list reply (menu selection)
   if (message.interactive?.list_reply) {
-    const productId = message.interactive.list_reply.id;
-    console.log(`User selected product: ${productId}`);
+    const selectedId = message.interactive.list_reply.id;
+    if (selectedId === "MORE_ITEMS") {
+      // User tapped "More Items": Increment page and resend menu.
+      let userContext = userContexts.get(phone) || { order: [], page: 0 };
+      userContext.page = (userContext.page || 0) + 1;
+      userContexts.set(phone, userContext);
+      await sendMenuMessage(phone, phoneNumberId);
+    } else {
+      // Normal product selection: Save product ID.
+      console.log(`User selected product: ${selectedId}`);
+      let userContext = userContexts.get(phone) || { order: [], page: 0 };
+      userContext.order.push(selectedId);
+      // Reset pagination so next menu shows the first page.
+      userContext.page = 0;
+      userContexts.set(phone, userContext);
 
-    // Get or create the user context
-    let userContext = userContexts.get(phone) || { order: [] };
-    userContext.order.push(productId);
-    userContexts.set(phone, userContext);
-
-    // Follow up with the order prompt (ask "More" or "That's It")
-    await sendOrderPrompt(phone, phoneNumberId);
+      // Follow up with order prompt (asking "More" or "That's It")
+      await sendOrderPrompt(phone, phoneNumberId);
+    }
   }
-  // Check for a button reply (More or Order)
+  // Handle button replies (for "More" or "That's It") as before.
   else if (message.interactive?.button_reply) {
     const buttonId = message.interactive.button_reply.id;
     console.log(`Button reply received: ${buttonId}`);
-
     if (buttonId === "MORE") {
-      // Send the menu again for an additional selection
+      // Send the menu again for an additional selection.
       await sendMenuMessage(phone, phoneNumberId);
     } else if (buttonId === "ORDER") {
-      // Show order summary
+      // Show order summary.
       await sendOrderSummary(phone, phoneNumberId);
     }
   }
 }
+
 
 // --- 6. Handle Incoming Text Messages ---
 // (For non-interactive messages and commands.)
