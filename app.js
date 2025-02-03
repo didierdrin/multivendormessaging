@@ -96,7 +96,7 @@ function generateDynamicFlow(mockProducts) {
 
   // Note: The "data" field has been removed from the first component.
   return {
-    name: "menuoneflow",
+    name: "menutwoflow",
     language: { code: "en_US" },
     categories: ["SHOPPING"],
     components: [
@@ -257,6 +257,27 @@ async function sendSecondCatalog(phone, phoneNumberId, flowIdUnique) {
   }
 }
 
+
+async function sendTestMessage(phone, phoneNumberId) {
+  
+
+  // Note: The parameter key has been changed from "flow_token" to "payload"
+  const payload = {
+    type: "text",
+    text: {
+      body: "This is the test message",
+    }
+  };
+
+  try {
+    await sendWhatsAppMessage(phone, payload, phoneNumberId);
+    console.log('Successfully sent catalog with flow ID:', flowId);
+  } catch (error) {
+    console.error('Error sending catalog:', error);
+    throw error;
+  }
+}
+
 //
 // 4. Send WhatsApp Message (generic)
 //
@@ -302,6 +323,11 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log("User context reset.");
       break;
 
+    
+    case "test":
+      await sendTestMessage(phone, phoneNumberId); //globalFlowId
+      break;
+      
     case "menu2":
       console.log("User requested menu2 with flowId:", globalFlowId);
       if (!globalFlowId) {
