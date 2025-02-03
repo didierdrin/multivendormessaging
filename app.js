@@ -27,13 +27,41 @@ const userContexts = new Map();
 let globalFlowId = null;
 
 // Initialize the flow when starting the server
-async function initializeFlow() {
-  try {
-    const flow = generateAndLogFlow();
-    globalFlowId = await updateWhatsAppFlow(flow);
-    console.log('Flow initialized with ID:', globalFlowId);
-  } catch (error) {
-    console.error('Error initializing flow:', error);
+
+async function initializeFlow(maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`Attempt ${attempt} to initialize flow`);
+      
+      const flow = generateAndLogFlow();
+      
+      // Validate flow structure before sending
+      if (!flow.name || !flow.components || !flow.language) {
+        throw new Error('Invalid flow structure generated');
+      }
+      
+      console.log('Generated valid flow structure');
+      
+      const flowId = await updateWhatsAppFlow(flow);
+      
+      if (!flowId) {
+        throw new Error('Flow ID not received');
+      }
+      
+      console.log('Successfully initialized flow with ID:', flowId);
+      return flowId;
+      
+    } catch (error) {
+      console.error(`Flow initialization attempt ${attempt} failed:`, error);
+      
+      if (attempt === maxRetries) {
+        console.error('Maximum retry attempts reached');
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
+    }
   }
 }
 
@@ -454,26 +482,37 @@ const flow = generateAndLogFlow();
 
 
 // WhatsApp API function
-
 const whatsappAPI = {
   createFlow: async (flowStructure) => {
     try {
-      const response = await axios.post(
+      console.log('Attempting to create flow with structure:', 
+        JSON.stringify(flowStructure, null, 2));
+
+      // First, create the message template that will contain the flow
+      const templateResponse = await axios.post(
         `https://graph.facebook.com/${VERSION}/191711990692012/message_templates`,
         {
-          name: flowStructure.name,
+          name: `menu_template_${Date.now()}`, // Unique name for each template
           category: "MARKETING",
           components: [
             {
+              type: "HEADER",
+              format: "TEXT",
+              text: "Our Product Catalog"
+            },
+            {
               type: "BODY",
-              text: "View our products"
+              text: "Browse our products and make your selection"
             },
             {
               type: "BUTTONS",
               buttons: [
                 {
                   type: "FLOW",
-                  flow: flowStructure
+                  flow: {
+                    name: flowStructure.name,
+                    data: flowStructure  // Include the full flow data
+                  }
                 }
               ]
             }
@@ -487,15 +526,36 @@ const whatsappAPI = {
           }
         }
       );
-      
-      if (!response.data.id) {
+
+      console.log('Template creation response:', 
+        JSON.stringify(templateResponse.data, null, 2));
+
+      // Now create the flow itself
+      const flowResponse = await axios.post(
+        `https://graph.facebook.com/${VERSION}/191711990692012/flows`,
+        flowStructure,
+        {
+          headers: {
+            Authorization: `Bearer ${ACCESS_TOKEN}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+
+      console.log('Flow creation response:', 
+        JSON.stringify(flowResponse.data, null, 2));
+
+      if (!flowResponse.data.id) {
         throw new Error('Flow ID not received in response');
       }
-      
-      console.log("Template creation response:", response.data);
-      return response.data.id; // Return the template ID which will be used as flow ID
+
+      return flowResponse.data.id;
     } catch (error) {
-      console.error("Template creation error:", error.response?.data || error);
+      console.error('Error creating flow:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       throw error;
     }
   }
@@ -559,8 +619,29 @@ app.post("/api/get-menu", async (req, res) => {
     }
 });
 
-const port = process.env.PORT || 5000;
-app.listen(port, async () => {
-    console.log(`Server is running on port ${port}`);
-    await initializeFlow();
-});
+
+
+// Modified server startup
+const startServer = async () => {
+  try {
+    // Initialize flow before starting server
+    globalFlowId = await initializeFlow();
+    
+    if (!globalFlowId) {
+      throw new Error('Failed to initialize flow');
+    }
+
+    const port = process.env.PORT || 5000;
+
+    // Start the server only after flow is initialized
+    app.listen(port, () => {
+      console.log(`Server running on port ${port} with flow ID: ${globalFlowId}`);
+    });
+  } catch (error) {
+    console.error('Server startup failed:', error);
+    process.exit(1);  // Exit if we can't initialize the flow
+  }
+};
+
+// Start the server
+startServer();
