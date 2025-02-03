@@ -58,7 +58,7 @@ async function fetchData(collectionName) {
 
 
 // Returns rows for the current page (max 10 rows per page)
-function paginateRows(rows, page = 0, pageSize = 10) {
+function paginateRows(rows, page = 0, pageSize = 9) {
   const start = page * pageSize;
   return rows.slice(start, start + pageSize);
 }
@@ -136,8 +136,8 @@ const allRows = mergedData.map((item) => {
     const currentPage = userContext.page || 0;
 
     // Get rows for the current page
-    //let rows = paginateRows(allRows, currentPage, 10);
-    let rows = allRows.slice(0, 9);
+    let rows = paginateRows(allRows, currentPage, 9);
+    //let rows = allRows.slice(0, 9);
     
     // Check if there are more items after this page.
     const hasMore = (currentPage + 1) * 10 < allRows.length;
