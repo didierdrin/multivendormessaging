@@ -308,7 +308,7 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
         console.error('Flow ID not available');
         return;
       }
-      await sendSecondCatalog(phone, phoneNumberId, 974841610643366); //globalFlowId
+      await sendSecondCatalog(phone, phoneNumberId, "974841610643366"); //globalFlowId
       break;
 
     default:
