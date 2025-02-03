@@ -96,7 +96,7 @@ function generateDynamicFlow(mockProducts) {
 
   // Note: The "data" field has been removed from the first component.
   return {
-    name: "menutwoflow",
+    name: "menuthreeflow",
     language: { code: "en_US" },
     categories: ["SHOPPING"],
     components: [
@@ -221,7 +221,7 @@ async function initializeFlow(maxRetries = 2) {
 // 3. Send WhatsApp Message With Flow Template (menu2)
 //
 async function sendSecondCatalog(phone, phoneNumberId, flowIdUnique) {
-  if (!flowId) {
+  if (!flowIdUnique) {
     console.error('Flow ID is not available');
     return;
   }
@@ -250,7 +250,7 @@ async function sendSecondCatalog(phone, phoneNumberId, flowIdUnique) {
 
   try {
     await sendWhatsAppMessage(phone, payload, phoneNumberId);
-    console.log('Successfully sent catalog with flow ID:', flowId);
+    console.log('Successfully sent catalog with flow ID:', globalFlowId);
   } catch (error) {
     console.error('Error sending catalog:', error);
     throw error;
@@ -271,7 +271,7 @@ async function sendTestMessage(phone, phoneNumberId) {
 
   try {
     await sendWhatsAppMessage(phone, payload, phoneNumberId);
-    console.log('Successfully sent catalog with flow ID:', flowId);
+    console.log('Successfully sent catalog with flow ID:', globalFlowId);
   } catch (error) {
     console.error('Error sending catalog:', error);
     throw error;
