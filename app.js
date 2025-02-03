@@ -100,38 +100,43 @@ async function sendMenuMessage(phone, phoneNumberId) {
       };
     });
 
+    
+
     // Build list rows for the interactive message.
-    const rows = mergedData.map((item) => ({
-      id: item.id, // When selected, this ID is returned.
-      title: item.productName,
-      description: `Vendor: ${item.vendor} | Price: ${item.price} | Categories: ${item.categories.join(", ")}`
-    }));
+let rows = mergedData.map((item) => ({
+  id: item.id, // When selected, this ID is returned.
+  title: item.productName,
+  description: `Vendor: ${item.vendor} | Price: ${item.price} | Categories: ${item.categories.join(", ")}`
+}));
 
-    // Build the interactive list payload.
-    const payload = {
-      type: "interactive",
-      interactive: {
-        type: "list",
-        header: {
-          type: "text",
-          text: "Menu Items"
-        },
-        body: {
-          text: "Select a product to add to your order:"
-        },
-        action: {
-          button: "Select Product",
-          sections: [
-            {
-              title: "Products",
-              rows: rows
-            }
-          ]
+// Limit the number of rows to 10
+rows = rows.slice(0, 10);
+
+const payload = {
+  type: "interactive",
+  interactive: {
+    type: "list",
+    header: {
+      type: "text",
+      text: "Menu Items"
+    },
+    body: {
+      text: "Select a product to add to your order:"
+    },
+    action: {
+      button: "Select Product",
+      sections: [
+        {
+          title: "Products",
+          rows: rows
         }
-      }
-    };
+      ]
+    }
+  }
+};
 
-    await sendWhatsAppMessage(phone, payload, phoneNumberId);
+await sendWhatsAppMessage(phone, payload, phoneNumberId);
+
   } catch (error) {
     console.error("Error in sendMenuMessage:", error.message);
   }
