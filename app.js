@@ -96,7 +96,7 @@ function generateDynamicFlow(mockProducts) {
 
   // Note: The "data" field has been removed from the first component.
   return {
-    name: "menuthreeflow",
+    name: "menufourflow",
     language: { code: "en_US" },
     categories: ["SHOPPING"],
     components: [
