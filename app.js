@@ -185,7 +185,7 @@ const whatsappAPI = {
   }
 };
 
-async function initializeFlow(maxRetries = 3) {
+async function initializeFlow(maxRetries = 2) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Attempt ${attempt} to initialize flow`);
@@ -308,7 +308,7 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
         console.error('Flow ID not available');
         return;
       }
-      await sendSecondCatalog(phone, phoneNumberId, "974841610643366"); //globalFlowId
+      await sendSecondCatalog(phone, phoneNumberId, globalFlowId); //globalFlowId
       break;
 
     default:
