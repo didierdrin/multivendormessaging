@@ -105,7 +105,7 @@ async function sendMenuMessage(phone, phoneNumberId) {
     // Build list rows for the interactive message.
 let rows = mergedData.map((item) => ({
   id: item.id, // When selected, this ID is returned.
-  title: item.productName,
+  title: item.productName[20],
   description: `Vendor: ${item.vendor} | Price: ${item.price} | Categories: ${item.categories.join(", ")}`
 }));
 
