@@ -98,7 +98,7 @@ function generateDynamicFlow(mockProducts) {
   return {
     name: "menuoneflow",
     language: { code: "en_US" },
-    category: ["MARKETING"],
+    categories: ["MARKETING"],
     components: [
       {
         id: "QUESTION_THREE",
