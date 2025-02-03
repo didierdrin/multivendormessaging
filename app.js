@@ -7,9 +7,9 @@ import { v4 as uuidv4 } from "uuid";
 const app = express();
 
 app.use(cors({
-    origin: ["http://localhost:3000", "https://multivendormessaging.onrender.com"],
-    methods: ["GET", "POST"],
-    credentials: true,
+  origin: ["http://localhost:3000", "https://multivendormessaging.onrender.com"],
+  methods: ["GET", "POST"],
+  credentials: true,
 }));
 
 app.use(bodyParser.json());
@@ -18,6 +18,8 @@ const ACCESS_TOKEN = "EAAGHrMn6uugBO9xlSTNU1FsbnZB7AnBLCvTlgZCYQDZC8OZA7q3nrtxpx
 const VERSION = "v22.0";
 
 const userContexts = new Map();
+const processedMessages = new Set(); // <-- Ensure this is declared
+
 let globalFlowId = null; // Initialize flow ID at startup
 
 // Mock product list
@@ -45,8 +47,11 @@ const mockProducts = [
   }
 ];
 
-// Generate dynamic flow structure
+//
+// 1. Generate Dynamic Flow Structure
+//
 function generateDynamicFlow(mockProducts) {
+  // Create opt-in options for each product
   const productOptIns = mockProducts.map((product, index) => ({
     label: `${product.name} - ${product.price}`,
     name: `${product.name.replace(/\s+/g, '_')}_${product.id}`,
@@ -62,6 +67,7 @@ function generateDynamicFlow(mockProducts) {
     }
   }));
 
+  // Create a detail screen for each product
   const productScreens = mockProducts.map(product => ({
     id: `OPTIN_SCREEN_screen_${product.id}`,
     layout: {
@@ -88,13 +94,13 @@ function generateDynamicFlow(mockProducts) {
     title: "Details"
   }));
 
+  // Note: The "data" field has been removed from the first component.
   return {
     name: "menuoneflow",
     language: { code: "en_US" },
     category: "MARKETING",
     components: [
       {
-        data: {},
         id: "QUESTION_THREE",
         layout: {
           children: [
@@ -131,7 +137,6 @@ function generateDynamicFlow(mockProducts) {
   };
 }
 
-// Generate and log the flow structure
 function generateAndLogFlow() {
   try {
     const dynamicFlow = generateDynamicFlow(mockProducts);
@@ -143,13 +148,14 @@ function generateAndLogFlow() {
   }
 }
 
-// WhatsApp API function to create a flow
+//
+// 2. Create WhatsApp Flow via the API
+//
 const whatsappAPI = {
   createFlow: async (flowStructure) => {
     try {
       console.log('Attempting to create flow with structure:', JSON.stringify(flowStructure, null, 2));
 
-      // Create the flow
       const flowResponse = await axios.post(
         `https://graph.facebook.com/${VERSION}/191711990692012/flows`,
         flowStructure,
@@ -179,14 +185,12 @@ const whatsappAPI = {
   }
 };
 
-// Initialize flow
 async function initializeFlow(maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       console.log(`Attempt ${attempt} to initialize flow`);
       const flow = generateAndLogFlow();
 
-      // Validate flow structure
       if (!flow.name || !flow.components || !flow.language) {
         throw new Error('Invalid flow structure generated');
       }
@@ -207,24 +211,26 @@ async function initializeFlow(maxRetries = 3) {
         console.error('Maximum retry attempts reached');
         throw error;
       }
-
       // Exponential backoff
       await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
     }
   }
 }
 
-// Send WhatsApp message with the flow
+//
+// 3. Send WhatsApp Message With Flow Template (menu2)
+//
 async function sendSecondCatalog(phone, phoneNumberId, flowId) {
   if (!flowId) {
     console.error('Flow ID is not available');
     return;
   }
 
+  // Note: The parameter key has been changed from "flow_token" to "payload"
   const payload = {
     type: "template",
     template: {
-      name: "menuone",
+      name: "menuone", // This must match the template name in your Meta dashboard.
       language: { code: "en_US" },
       components: [
         {
@@ -234,7 +240,7 @@ async function sendSecondCatalog(phone, phoneNumberId, flowId) {
           parameters: [
             {
               type: "flow",
-              flow_token: flowId
+              payload: flowId
             }
           ]
         }
@@ -251,7 +257,9 @@ async function sendSecondCatalog(phone, phoneNumberId, flowId) {
   }
 }
 
-// Send WhatsApp message
+//
+// 4. Send WhatsApp Message (generic)
+//
 const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
   try {
     const url = `https://graph.facebook.com/${VERSION}/${phoneNumberId}/messages`;
@@ -277,7 +285,9 @@ const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
   }
 };
 
-// Handle text messages
+//
+// 5. Handle Incoming Text Messages
+//
 const handleTextMessages = async (message, phone, phoneNumberId) => {
   const messageText = message.text.body.trim().toLowerCase();
 
@@ -306,7 +316,6 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
   }
 };
 
-// Handle phone number logic
 async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
   switch (message.type) {
     case "text":
@@ -318,7 +327,9 @@ async function handlePhoneNumber1Logic(message, phone, changes, phoneNumberId) {
   }
 }
 
-// Webhook endpoint for receiving messages
+//
+// 6. Webhook Endpoint
+//
 app.post("/webhook", async (req, res) => {
   if (req.body.object === "whatsapp_business_account") {
     const changes = req.body.entry?.[0]?.changes?.[0];
@@ -356,7 +367,9 @@ app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 });
 
-// Webhook verification
+//
+// 7. Webhook Verification
+//
 app.get("/webhook", (req, res) => {
   const VERIFY_TOKEN = "icupatoken31";
   const mode = req.query["hub.mode"];
@@ -373,7 +386,9 @@ app.get("/webhook", (req, res) => {
   }
 });
 
-// Start the server
+//
+// 8. Start the Server & Initialize the Flow
+//
 const startServer = async () => {
   try {
     globalFlowId = await initializeFlow();
