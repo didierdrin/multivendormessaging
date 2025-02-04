@@ -179,7 +179,7 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
 
     // Map products to interactive list rows with truncation.
     const allRows = filteredProducts.map((prod) => {
-      const fullDescription = `Price: ${prod.price} | ${prod.description}`;
+      const fullDescription = `Price: €${prod.price} | ${prod.description}`;
       return {
         id: prod.id, // This id will be returned in the interactive reply.
         title: truncateString(prod.name, MAX_TITLE_LENGTH),
