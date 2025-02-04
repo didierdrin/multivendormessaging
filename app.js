@@ -349,7 +349,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
         const selectedClass = classId === "CLASS_FOOD" ? "Food" : "Drinks";
         userContext.selectedClass = selectedClass;
         
-        await sendCategorySelectionMessage(phone, phoneNumberId, selectedClass);
+        await sendCategorySelectionMessage(phone, phoneNumberId, userContext.selectedClass);
         userContext.stage = "CATEGORY_SELECTION";
         userContexts.set(phone, userContext);
       }
@@ -447,6 +447,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
 const handleTextMessages = async (message, phone, phoneNumberId) => {
   let userContext = userContexts.get(phone) || {};
   const messageText = message.text.body.trim().toLowerCase();
+  
 
   switch (messageText) {
     case "adminclear":
@@ -468,24 +469,28 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
       userContext.vendorId = "3Wy39i9qx4AuICma9eQ6"; 
+      userContext.stage = "CLASS_SELECTION";
       userContexts.set(phone, userContext);
       break;
     case "icupa":
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
       userContext.vendorId = "Kj2SXykhWihamsIDhSnb"; 
+      userContext.stage = "CLASS_SELECTION";
       userContexts.set(phone, userContext);
       break;
     case "menu2":
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
       userContext.vendorId = "Kj2SXykhWihamsIDhSnb"; 
+      userContext.stage = "CLASS_SELECTION";
       userContexts.set(phone, userContext);
       break;
     case "menu3":
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
       userContext.vendorId = "alSIUvz0JNmugFDoJ3En"; 
+      userContext.stage = "CLASS_SELECTION";
       userContexts.set(phone, userContext);
       break;
     default:
