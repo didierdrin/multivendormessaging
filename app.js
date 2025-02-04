@@ -156,7 +156,7 @@ async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass)
 // --- 3. Send Product Selection Message ---
 // Based on the selected class and category, fetch products from "mt_products" and filter using data from "mt_subCategories".
 async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, selectedCategory) {
-  let userContext = userContexts.get(phone) || {};
+  let userContext = userContexts.get(phone) || { order: [], page: 0 };
   try {
     // Fetch products from "mt_products"
     const productsData = await fetchData("mt_products");
@@ -188,7 +188,7 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
     });
 
     // Use pagination for products.
-    let userContext = userContexts.get(phone) || { order: [], page: 0 };
+    
     const currentPage = userContext.page || 0;
     let rows = paginateRows(allRows, currentPage, 9);
     const hasMore = (currentPage + 1) * 9 < allRows.length;
