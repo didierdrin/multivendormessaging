@@ -435,9 +435,7 @@ async function createWhatsappOrder(phone) {
   const products = order.map(item => ({
     price: Number(item.price),
     product: item.id,
-    quantity: 1,
-    rejected: false,
-    served: false
+    quantity: 1
   }));
   
   // Build order object using provided structure.
@@ -449,6 +447,8 @@ async function createWhatsappOrder(phone) {
     paid: false,
     phone: phone,
     products: products,
+    rejected: false,
+    served: false,
     table: userContext.table,           // Modify if table information is available.
     user: phone,          // Here, we use the phone as the user identifier.
     vendor: userContext.vendorId
