@@ -177,6 +177,20 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
       return subCat.category === selectedCategory;
     });
 
+
+    // If there are no products, send a text message and exit.
+    if (filteredProducts.length === 0) {
+      await sendWhatsAppMessage(
+        phone,
+        {
+          type: "text",
+          text: { body: "There are no products available in this category." }
+        },
+        phoneNumberId
+      );
+      return;
+    }
+
     // Map products to interactive list rows with truncation.
     const allRows = filteredProducts.map((prod) => {
       const fullDescription = `Price: €${prod.price} | ${prod.description}`;
@@ -204,8 +218,8 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
       type: "interactive",
       interactive: {
         type: "list",
-        header: { type: "text", text: "Products" },
-        body: { text: "Select a product:" },
+        header: { type: "text", text: "Ready to treat yourself?" },
+        body: { text: "Select your favorite. 😋" },
         action: {
           button: "Select Product",
           sections: [
@@ -235,7 +249,7 @@ async function sendOrderPrompt(phone, phoneNumberId) {
     type: "interactive",
     interactive: {
       type: "button",
-      body: { text: "Would you like to add more items to your order?" },
+      body: { text: "*Your order’s looking good!*Want to add anything else before checkout? 🍕🍷" },
       action: {
         buttons: [
           { type: "reply", reply: { id: "MORE", title: "More" } },
