@@ -479,6 +479,7 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       await sendClassSelectionMessage(phone, phoneNumberId);
       userContext.vendorId = "Kj2SXykhWihamsIDhSnb"; 
       userContexts.set(phone, userContext);
+      break;
     case "menu3":
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
