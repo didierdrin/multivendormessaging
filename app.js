@@ -80,8 +80,8 @@ async function sendClassSelectionMessage(phone, phoneNumberId) {
     type: "interactive",
     interactive: {
       type: "button",
-      header: { type: "text", text: "Select a Class" },
-      body: { text: "Choose one of the following:" },
+      header: { type: "text", text: "Feeling hungry or just thirsty?" },
+      body: { text: "Choose your fix! 🍕🥂" },
       action: {
         buttons: [
           { type: "reply", reply: { id: "CLASS_FOOD", title: "Food" } },
@@ -130,8 +130,8 @@ async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass)
       type: "interactive",
       interactive: {
         type: "list",
-        header: { type: "text", text: "Categories" },
-        body: { text: "Select a category:" },
+        header: { type: "text", text: "What’s your flavor today?" },
+        body: { text: "🍔🍹 Pick a category!" },
         action: {
           button: "Select Category",
           sections: [
@@ -266,7 +266,7 @@ async function sendOrderSummary(phone, phoneNumberId) {
   const orderLines = order.map((item, idx) => `${idx + 1}. ${item.name} - €${item.price}`);
   const totalAmount = order.reduce((sum, item) => sum + Number(item.price), 0);
   
-  const summaryText = `Order Summary:\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
+  const summaryText = `*Order Summary:*\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
 
 
   //const summaryText =
