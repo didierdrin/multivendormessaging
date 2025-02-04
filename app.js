@@ -162,8 +162,8 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
     const filteredProducts = Object.values(productsData).filter((prod) => {
       return (
         prod.active === true &&
-        prod.classes.toLowerCase() === selectedClass.toLowerCase() &&
-        prod.subcategory === selectedCategory
+        prod.classes.toLowerCase() === selectedClass.toLowerCase() //&&
+        //prod.subcategory === selectedCategory
       );
     });
 
