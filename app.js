@@ -373,12 +373,10 @@ async function sendOrderSummary(phone, phoneNumberId) {
   const orderLines = order.map((item, idx) => `${idx + 1}. ${item.name} - €${item.price}`);
   const totalAmount = order.reduce((sum, item) => sum + Number(item.price), 0);
   
-  const summaryText = `*Your order lineup!*🔥 \nDouble-check before we send it in.\n*Order Summary:*\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
+  const summaryText = `*Your order lineup!*🔥 \nDouble-check before we send it in.\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
 
 
-  //const summaryText =
-  //  "Order Summary:\n" +
-  //  order.map((item, idx) => `${idx + 1}. ${item.name}`).join("\n");
+  
 
   const payload = {
     type: "interactive",
