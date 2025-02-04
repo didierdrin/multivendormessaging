@@ -262,9 +262,16 @@ async function sendOrderSummary(phone, phoneNumberId) {
     return;
   }
 
-  const summaryText =
-    "Order Summary:\n" +
-    order.map((item, idx) => `${idx + 1}. ${item.name}`).join("\n");
+  // Create an order line for each item and compute the total amount.
+  const orderLines = order.map((item, idx) => `${idx + 1}. ${item.name} - €${item.price}`);
+  const totalAmount = order.reduce((sum, item) => sum + Number(item.price), 0);
+  
+  const summaryText = `Order Summary:\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
+
+
+  //const summaryText =
+  //  "Order Summary:\n" +
+  //  order.map((item, idx) => `${idx + 1}. ${item.name}`).join("\n");
 
   const payload = {
     type: "interactive",
@@ -274,6 +281,7 @@ async function sendOrderSummary(phone, phoneNumberId) {
       action: {
         buttons: [
           { type: "reply", reply: { id: "PAY", title: "Pay" } },
+          { type: "reply", reply: { id: "ADD_MORE", title: "Add More" } },
           { type: "reply", reply: { id: "CANCEL", title: "Cancel" } }
         ]
       }
@@ -395,7 +403,8 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
     } else {
       // Normal product selection: save product data (id and name)
       if (!userContext.order) userContext.order = [];
-      userContext.order.push({ id: selectedId, name: selectedTitle });
+      //userContext.order.push({ id: selectedId, name: selectedTitle });
+      userContext.order.push({ id: selectedId, name: selectedTitle, price: productPrice });
       userContext.stage = "ORDER_PROMPT";
       userContext.page = 0; // Reset page for later selections if needed
       userContexts.set(phone, userContext);
@@ -430,6 +439,11 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
           userContext.stage = "PAYMENT_INFO";
           userContexts.set(phone, userContext);
           await sendPaymentInfo(phone, phoneNumberId); 
+         
+        } else if (buttonId === "ADD_MORE") {
+          userContext.stage = "PAYMENT_INFO";
+          userContexts.set(phone, userContext);
+          await sendClassSelectionMessage(phone, phoneNumberId); 
          
         } else if (buttonId === "CANCEL") {
           await userContexts.delete(phone);
