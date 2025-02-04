@@ -152,26 +152,32 @@ async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass)
   }
 }
 
+
 // --- 3. Send Product Selection Message ---
-// Based on the selected class and category, fetch products from "mt_subcategories" and send them.
+// Based on the selected class and category, fetch products from "mt_products" and filter using data from "mt_subCategories".
 async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, selectedCategory) {
   try {
     // Fetch products from "mt_products"
     const productsData = await fetchData("mt_products");
-    // Filter products: active === true, classes match, and product.subcategory equals the selected category id.
+    // Fetch sub-categories from "mt_subCategories"
+    const subCategoriesData = await fetchData("mt_subCategories");
+
+    // Filter products: active === true, classes match, and the product's subcategory's 'category' field equals selectedCategory.
     const filteredProducts = Object.values(productsData).filter((prod) => {
-      return (
-        prod.active === true &&
-        prod.classes.toLowerCase() === selectedClass.toLowerCase() //&&
-        //prod.subcategory === selectedCategory
-      );
+      if (prod.active !== true) return false;
+      if (prod.classes.toLowerCase() !== selectedClass.toLowerCase()) return false;
+      // Look up the sub-category document using prod.subcategory as the key.
+      const subCat = subCategoriesData[prod.subcategory];
+      if (!subCat) return false;
+      // Check if the sub-category's 'category' field matches the selectedCategory (doc.id from mt_categories)
+      return subCat.category === selectedCategory;
     });
 
     // Map products to interactive list rows with truncation.
     const allRows = filteredProducts.map((prod) => {
       const fullDescription = `Price: ${prod.price} | ${prod.description}`;
       return {
-        id: prod.id, // Will be returned in the interactive reply.
+        id: prod.id, // This id will be returned in the interactive reply.
         title: truncateString(prod.name, MAX_TITLE_LENGTH),
         description: truncateString(fullDescription, MAX_DESCRIPTION_LENGTH)
       };
@@ -215,6 +221,7 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
     console.error("Error in sendProductSelectionMessage:", error.message);
   }
 }
+
 
 
 // --- 4. Send Order Prompt ---
