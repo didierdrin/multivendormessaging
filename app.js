@@ -404,6 +404,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
   if (message.interactive?.list_reply) {
     const selectedId = message.interactive.list_reply.id;
     const selectedTitle = message.interactive.list_reply.title; // Get the product name
+    const selectedPrice = message.interactive.list_reply.price; // Get the product price
     if (selectedId === "MORE_ITEMS") {
       // Pagination for products
       userContext.page = (userContext.page || 0) + 1;
@@ -418,7 +419,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
       // Normal product selection: save product data (id and name)
       if (!userContext.order) userContext.order = [];
       //userContext.order.push({ id: selectedId, name: selectedTitle });
-      userContext.order.push({ id: selectedId, name: selectedTitle, price: productPrice });
+      userContext.order.push({ id: selectedId, name: selectedTitle, price: selectedPrice });
       userContext.stage = "ORDER_PROMPT";
       userContext.page = 0; // Reset page for later selections if needed
       userContexts.set(phone, userContext);
