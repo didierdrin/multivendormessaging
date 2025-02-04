@@ -191,15 +191,23 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
       return;
     }
 
+    // Create a mapping from product id to its data (price, name, etc.)
+    const productData = {};
     // Map products to interactive list rows with truncation.
     const allRows = filteredProducts.map((prod) => {
+      // Save the product data for later lookup.
+      productData[prod.id] = { price: prod.price, name: prod.name };
       const fullDescription = `Price: €${prod.price} | ${prod.description}`;
+      
       return {
         id: prod.id, // This id will be returned in the interactive reply.
         title: truncateString(prod.name, MAX_TITLE_LENGTH),
         description: truncateString(fullDescription, MAX_DESCRIPTION_LENGTH)
       };
     });
+
+     // Store the mapping in the user context for later lookup.
+    userContext.productData = productData;
 
     // Use pagination for products.
     
@@ -249,7 +257,7 @@ async function sendOrderPrompt(phone, phoneNumberId) {
     type: "interactive",
     interactive: {
       type: "button",
-      body: { text: "*Your order’s looking good!*Want to add anything else before checkout? 🍕🍷" },
+      body: { text: `*Your order’s looking good!*\nWant to add anything else before checkout? 🍕🍷` },
       action: {
         buttons: [
           { type: "reply", reply: { id: "MORE", title: "More" } },
@@ -280,7 +288,7 @@ async function sendOrderSummary(phone, phoneNumberId) {
   const orderLines = order.map((item, idx) => `${idx + 1}. ${item.name} - €${item.price}`);
   const totalAmount = order.reduce((sum, item) => sum + Number(item.price), 0);
   
-  const summaryText = `*Your order lineup!*🔥 Double-check before we send it in.\n*Order Summary:*\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
+  const summaryText = `*Your order lineup!*🔥 \nDouble-check before we send it in.\n*Order Summary:*\n${orderLines.join("\n")}\n\nTotal: €${totalAmount}`;
 
 
   //const summaryText =
@@ -404,7 +412,10 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
   if (message.interactive?.list_reply) {
     const selectedId = message.interactive.list_reply.id;
     const selectedTitle = message.interactive.list_reply.title; // Get the product name
-    const selectedPrice = message.interactive.list_reply.price; // Get the product price
+    // Look up the price from the stored productData mapping.
+    const productData = userContext.productData || {};
+    const selectedPrice = productData[selectedId] ? productData[selectedId].price : "0";
+
     if (selectedId === "MORE_ITEMS") {
       // Pagination for products
       userContext.page = (userContext.page || 0) + 1;
