@@ -348,9 +348,10 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
         const classId = message.interactive.button_reply.id; // "CLASS_FOOD" or "CLASS_DRINKS"
         const selectedClass = classId === "CLASS_FOOD" ? "Food" : "Drinks";
         userContext.selectedClass = selectedClass;
+        
+        await sendCategorySelectionMessage(phone, phoneNumberId, selectedClass);
         userContext.stage = "CATEGORY_SELECTION";
         userContexts.set(phone, userContext);
-        await sendCategorySelectionMessage(phone, phoneNumberId, selectedClass);
       }
       break;
 
