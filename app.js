@@ -288,7 +288,7 @@ async function sendOrderSummary(phone, phoneNumberId) {
 }
 
 // Payment Information
-const sendPaymentInfo(phone, phoneNumberId) {
+async function sendPaymentInfo(phone, phoneNumberId) {
   const userContext = userContexts.get(phone);
   if (!userContext) {
     console.log("No user context found for phone:", phone);
