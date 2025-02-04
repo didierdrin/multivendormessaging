@@ -162,10 +162,13 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
     // Fetch sub-categories from "mt_subCategories"
     const subCategoriesData = await fetchData("mt_subCategories");
 
+    const vendorId = userContext.vendorId;
+
     // Filter products: active === true, classes match, and the product's subcategory's 'category' field equals selectedCategory.
     const filteredProducts = Object.values(productsData).filter((prod) => {
       if (prod.active !== true) return false;
       if (prod.classes.toLowerCase() !== selectedClass.toLowerCase()) return false;
+      if (vendorId && prod.vendor !== vendorId) return false;
       // Look up the sub-category document using prod.subcategory as the key.
       const subCat = subCategoriesData[prod.subcategory];
       if (!subCat) return false;
@@ -235,7 +238,7 @@ async function sendOrderPrompt(phone, phoneNumberId) {
       action: {
         buttons: [
           { type: "reply", reply: { id: "MORE", title: "More" } },
-          { type: "reply", reply: { id: "ORDER", title: "That's It" } }
+          { type: "reply", reply: { id: "ORDER", title: "Checkout" } }
         ]
       }
     }
@@ -262,13 +265,45 @@ async function sendOrderSummary(phone, phoneNumberId) {
     "Order Summary:\n" +
     order.map((item, idx) => `${idx + 1}. ${item.name}`).join("\n");
 
-  await sendWhatsAppMessage(phone, {
-    type: "text",
-    text: { body: summaryText }
-  }, phoneNumberId);
+  const payload = {
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: summaryText },
+      action: {
+        buttons: [
+          { type: "reply", reply: { id: "PAY", title: "Pay" } },
+          { type: "reply", reply: { id: "CANCEL", title: "Cancel" } }
+        ]
+      }
+    }
+  };
+
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
 
   // Optionally clear the user's context.
-  userContexts.delete(phone);
+  userContext.stage = "PAY_PROMPT";
+  userContexts.set(phone, userContext);
+  
+}
+
+// Payment Information
+const sendPaymentInfo(phone, phoneNumberId) {
+  const userContext = userContexts.get(phone);
+  if (!userContext) {
+    console.log("No user context found for phone:", phone);
+    return;
+  }
+
+  const payload = {
+    type: "text",
+    text: {
+      body: "Code: 90894, Name: Vendor1"
+    }
+  };
+
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
+ userContexts.delete(phone);
 }
 
 
@@ -374,14 +409,28 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
         if (buttonId === "MORE") {
           userContext.stage = "PRODUCT_SELECTION";
           userContexts.set(phone, userContext);
-          await sendProductSelectionMessage(
-            phone,
-            phoneNumberId,
-            userContext.selectedClass,
-            userContext.selectedCategory
-          );
+          await sendClassSelectionMessage(phone, phoneNumberId); 
+         // await sendProductSelectionMessage(
+         //   phone,
+         //   phoneNumberId,
+         //   userContext.selectedClass,
+         //   userContext.selectedCategory
+         // );
         } else if (buttonId === "ORDER") {
           await sendOrderSummary(phone, phoneNumberId);
+        }
+      }
+      break;
+    case "PAY_PROMPT":
+      if (message.interactive?.button_reply) {
+        const buttonId = message.interactive.button_reply.id;
+        if (buttonId === "PAY") {
+          userContext.stage = "PAYMENT_INFO";
+          userContexts.set(phone, userContext);
+          await sendPaymentInfo(phone, phoneNumberId); 
+         
+        } else if (buttonId === "CANCEL") {
+          await userContexts.delete(phone);
         }
       }
       break;
@@ -394,6 +443,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
 // --- 8. Handle Incoming Text Messages ---
 // For plain text commands.
 const handleTextMessages = async (message, phone, phoneNumberId) => {
+  let userContext = userContexts.get(phone) || {};
   const messageText = message.text.body.trim().toLowerCase();
 
   switch (messageText) {
@@ -412,9 +462,28 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
         phoneNumberId
       );
       break;
-    case "menu":
+    case "menu1":
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
+      userContext.vendorId = "3Wy39i9qx4AuICma9eQ6"; 
+      userContexts.set(phone, userContext);
+      break;
+    case "freebeer1":
+      // Start the ordering flow by sending the class selection message.
+      await sendClassSelectionMessage(phone, phoneNumberId);
+      userContext.vendorId = "3Wy39i9qx4AuICma9eQ6"; 
+      userContexts.set(phone, userContext);
+      break;
+    case "menu2":
+      // Start the ordering flow by sending the class selection message.
+      await sendClassSelectionMessage(phone, phoneNumberId);
+      userContext.vendorId = "Kj2SXykhWihamsIDhSnb"; 
+      userContexts.set(phone, userContext);
+    case "menu3":
+      // Start the ordering flow by sending the class selection message.
+      await sendClassSelectionMessage(phone, phoneNumberId);
+      userContext.vendorId = "alSIUvz0JNmugFDoJ3En"; 
+      userContexts.set(phone, userContext);
       break;
     default:
       console.log(`Received unrecognized text message: ${messageText}`);
