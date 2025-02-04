@@ -70,7 +70,7 @@ function truncateString(str, maxLength) {
 }
 
 // --- 1. Send Class Selection Message ---
-// When "menu" is received, prompt the user to select a class (Foods or Drinks).
+// When "menu" is received, prompt the user to select a class (Food or Drinks).
 async function sendClassSelectionMessage(phone, phoneNumberId) {
   let userContext = userContexts.get(phone) || {};
   userContext.stage = "CLASS_SELECTION";
@@ -84,7 +84,7 @@ async function sendClassSelectionMessage(phone, phoneNumberId) {
       body: { text: "Choose one of the following:" },
       action: {
         buttons: [
-          { type: "reply", reply: { id: "CLASS_FOODS", title: "Foods" } },
+          { type: "reply", reply: { id: "CLASS_FOOD", title: "Food" } },
           { type: "reply", reply: { id: "CLASS_DRINKS", title: "Drinks" } }
         ]
       }
@@ -156,7 +156,7 @@ async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass)
 // Based on the selected class and category, fetch products from "mt_subcategories" and send them.
 async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, selectedCategory) {
   try {
-    const productsData = await fetchData("mt_subcategories");
+    const productsData = await fetchData("mt_products");
     // Filter products: active === true, classes match, and subcategory equals the selected category id.
     const filteredProducts = Object.values(productsData).filter((prod) => {
       return (
@@ -301,8 +301,8 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
   switch (userContext.stage) {
     case "CLASS_SELECTION":
       if (message.interactive?.button_reply) {
-        const classId = message.interactive.button_reply.id; // "CLASS_FOODS" or "CLASS_DRINKS"
-        const selectedClass = classId === "CLASS_FOODS" ? "Foods" : "Drinks";
+        const classId = message.interactive.button_reply.id; // "CLASS_FOOD" or "CLASS_DRINKS"
+        const selectedClass = classId === "CLASS_FOOD" ? "Food" : "Drinks";
         userContext.selectedClass = selectedClass;
         userContext.stage = "CATEGORY_SELECTION";
         userContexts.set(phone, userContext);
