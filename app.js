@@ -156,8 +156,9 @@ async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass)
 // Based on the selected class and category, fetch products from "mt_subcategories" and send them.
 async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, selectedCategory) {
   try {
+    // Fetch products from "mt_products"
     const productsData = await fetchData("mt_products");
-    // Filter products: active === true, classes match, and subcategory equals the selected category id.
+    // Filter products: active === true, classes match, and product.subcategory equals the selected category id.
     const filteredProducts = Object.values(productsData).filter((prod) => {
       return (
         prod.active === true &&
@@ -170,7 +171,7 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
     const allRows = filteredProducts.map((prod) => {
       const fullDescription = `Price: ${prod.price} | ${prod.description}`;
       return {
-        id: prod.id,
+        id: prod.id, // Will be returned in the interactive reply.
         title: truncateString(prod.name, MAX_TITLE_LENGTH),
         description: truncateString(fullDescription, MAX_DESCRIPTION_LENGTH)
       };
@@ -215,6 +216,7 @@ async function sendProductSelectionMessage(phone, phoneNumberId, selectedClass, 
   }
 }
 
+
 // --- 4. Send Order Prompt ---
 // After a product selection, ask the user if they want to add more items or finish the order.
 async function sendOrderPrompt(phone, phoneNumberId) {
@@ -242,27 +244,26 @@ async function sendOrderSummary(phone, phoneNumberId) {
   const order = userContext.order || [];
 
   if (order.length === 0) {
-    await sendWhatsAppMessage(
-      phone,
-      { type: "text", text: { body: "You have not ordered any items yet." } },
-      phoneNumberId
-    );
+    await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { body: "You have not ordered any items yet." }
+    }, phoneNumberId);
     return;
   }
 
   const summaryText =
     "Order Summary:\n" +
-    order.map((id, idx) => `${idx + 1}. Product ID: ${id}`).join("\n");
+    order.map((item, idx) => `${idx + 1}. ${item.name}`).join("\n");
 
-  await sendWhatsAppMessage(
-    phone,
-    { type: "text", text: { body: summaryText } },
-    phoneNumberId
-  );
+  await sendWhatsAppMessage(phone, {
+    type: "text",
+    text: { body: summaryText }
+  }, phoneNumberId);
 
-  // Optionally clear the user context after finalizing the order.
+  // Optionally clear the user's context.
   userContexts.delete(phone);
 }
+
 
 // --- 6. Generic WhatsApp Message Sender ---
 const sendWhatsAppMessage = async (phone, messagePayload, phoneNumberId) => {
@@ -334,29 +335,31 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
       break;
 
     case "PRODUCT_SELECTION":
-      if (message.interactive?.list_reply) {
-        const selectedId = message.interactive.list_reply.id;
-        if (selectedId === "MORE_ITEMS") {
-          // Pagination for products
-          userContext.page = (userContext.page || 0) + 1;
-          userContexts.set(phone, userContext);
-          await sendProductSelectionMessage(
-            phone,
-            phoneNumberId,
-            userContext.selectedClass,
-            userContext.selectedCategory
-          );
-        } else {
-          // Normal product selection: add the product to the order.
-          if (!userContext.order) userContext.order = [];
-          userContext.order.push(selectedId);
-          userContext.stage = "ORDER_PROMPT";
-          userContext.page = 0; // Reset page in case further selections are made later
-          userContexts.set(phone, userContext);
-          await sendOrderPrompt(phone, phoneNumberId);
-        }
-      }
-      break;
+  if (message.interactive?.list_reply) {
+    const selectedId = message.interactive.list_reply.id;
+    const selectedTitle = message.interactive.list_reply.title; // Get the product name
+    if (selectedId === "MORE_ITEMS") {
+      // Pagination for products
+      userContext.page = (userContext.page || 0) + 1;
+      userContexts.set(phone, userContext);
+      await sendProductSelectionMessage(
+        phone,
+        phoneNumberId,
+        userContext.selectedClass,
+        userContext.selectedCategory
+      );
+    } else {
+      // Normal product selection: save product data (id and name)
+      if (!userContext.order) userContext.order = [];
+      userContext.order.push({ id: selectedId, name: selectedTitle });
+      userContext.stage = "ORDER_PROMPT";
+      userContext.page = 0; // Reset page for later selections if needed
+      userContexts.set(phone, userContext);
+      await sendOrderPrompt(phone, phoneNumberId);
+    }
+  }
+  break;
+
 
     case "ORDER_PROMPT":
       if (message.interactive?.button_reply) {
