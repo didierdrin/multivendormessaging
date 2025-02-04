@@ -94,9 +94,94 @@ async function sendClassSelectionMessage(phone, phoneNumberId) {
   await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
+
+
+// --- 2. Send Category Selection Message ---
+// Based on the chosen class, fetch categories from "mt_categories" and send only those
+// that have products available (for the given vendor) in that category.
+async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass) {
+  try {
+    // Fetch categories, products, and sub-categories from Firestore.
+    const [categoriesData, productsData, subCategoriesData] = await Promise.all([
+      fetchData("mt_categories"),
+      fetchData("mt_products"),
+      fetchData("mt_subCategories")
+    ]);
+
+    // Get the vendor ID from the user context.
+    let userContext = userContexts.get(phone) || { order: [], page: 0 };
+    const vendorId = userContext.vendorId;
+
+    // Filter categories where the "classes" field matches the selected class (case-insensitive)
+    // and which have at least one matching product.
+    const filteredCategories = Object.values(categoriesData)
+      .filter((cat) => cat.classes.toLowerCase() === selectedClass.toLowerCase())
+      .filter((cat) => {
+        // Check if there is at least one product in mt_products that:
+        // - is active
+        // - has the matching class
+        // - (if vendorId is set) matches the vendor
+        // - has a sub-category (from mt_subCategories) whose 'category' field equals this category's id.
+        return Object.values(productsData).some((prod) => {
+          if (prod.active !== true) return false;
+          if (prod.classes.toLowerCase() !== selectedClass.toLowerCase()) return false;
+          if (vendorId && prod.vendor !== vendorId) return false;
+          const subCat = subCategoriesData[prod.subcategory];
+          if (!subCat) return false;
+          return subCat.category === cat.id;
+        });
+      });
+
+    // Map filtered categories to interactive list rows with truncation.
+    const allRows = filteredCategories.map((cat) => {
+      return {
+        id: cat.id,
+        title: truncateString(cat.name, MAX_TITLE_LENGTH),
+        description: truncateString(cat.description, MAX_DESCRIPTION_LENGTH)
+      };
+    });
+
+    // Use pagination (max 9 rows per page).
+    const currentPage = userContext.page || 0;
+    let rows = paginateRows(allRows, currentPage, 9);
+    const hasMore = (currentPage + 1) * 9 < allRows.length;
+    if (hasMore) {
+      rows.push({
+        id: "MORE_ITEMS",
+        title: "More Items",
+        description: "Tap to see more categories"
+      });
+    }
+
+    const payload = {
+      type: "interactive",
+      interactive: {
+        type: "list",
+        header: { type: "text", text: "What’s your flavor today?" },
+        body: { text: "🍔🍹 Pick a category!" },
+        action: {
+          button: "Select Category",
+          sections: [
+            {
+              title: "Categories",
+              rows: rows
+            }
+          ]
+        }
+      }
+    };
+
+    userContext.stage = "CATEGORY_SELECTION";
+    userContexts.set(phone, userContext);
+    await sendWhatsAppMessage(phone, payload, phoneNumberId);
+  } catch (error) {
+    console.error("Error in sendCategorySelectionMessage:", error.message);
+  }
+}
+
 // --- 2. Send Category Selection Message ---
 // Based on the chosen class, fetch categories from "mt_categories" and send them.
-async function sendCategorySelectionMessage(phone, phoneNumberId, selectedClass) {
+async function sendCategorySelectionMessageDraft(phone, phoneNumberId, selectedClass) {
   try {
     const categoriesData = await fetchData("mt_categories");
     // Filter categories where the "classes" field matches the selected class (case-insensitive)
@@ -326,16 +411,30 @@ async function sendPaymentInfo(phone, phoneNumberId) {
     return;
   }
 
+  let paymentLink = "Link unavailable";
+  try {
+    const vendorDoc = await firestore.collection("mt_vendors").doc(userContext.vendorId).get();
+    if (vendorDoc.exists) {
+      const vendorData = vendorDoc.data();
+      if (vendorData.paymentLink) {
+        paymentLink = vendorData.paymentLink;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching vendor data:", error.message);
+  }
+
   const payload = {
     type: "text",
     text: {
-      body: "Code: 90894, Name: Vendor1"
+      body: `*Tap to pay with Revolut!*\nInstant & hassle-free! ✅:\n${paymentLink}`
     }
   };
 
   await sendWhatsAppMessage(phone, payload, phoneNumberId);
- userContexts.delete(phone);
+  userContexts.delete(phone);
 }
+
 
 
 // --- 6. Generic WhatsApp Message Sender ---
@@ -467,7 +566,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
           await sendPaymentInfo(phone, phoneNumberId); 
          
         } else if (buttonId === "ADD_MORE") {
-          userContext.stage = "PAYMENT_INFO";
+          userContext.stage = "CLASS_SELECTION";
           userContexts.set(phone, userContext);
           await sendClassSelectionMessage(phone, phoneNumberId); 
          
