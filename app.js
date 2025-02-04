@@ -355,6 +355,19 @@ async function sendOrderPrompt(phone, phoneNumberId) {
   await sendWhatsAppMessage(phone, payload, phoneNumberId);
 }
 
+async function sendTable(phone, phoneNumberId) {
+  const userContext = userContexts.get(phone) || {};
+  const payload = {
+    type: "text",
+    text: {
+      body: "Please let us know the table you're seated at to serve you!"
+    }
+  };
+
+  await sendWhatsAppMessage(phone, payload, phoneNumberId);
+  userContext.stage = "TABLE_SELECTION";
+    userContexts.set(phone, userContext);
+}
 // --- 5. Send Order Summary ---
 // When the user finishes ordering, send a summary of the order.
 async function sendOrderSummary(phone, phoneNumberId) {
@@ -401,6 +414,54 @@ async function sendOrderSummary(phone, phoneNumberId) {
   
 }
 
+// This function creates a new order document in Firestore using the data collected in userContext.
+async function createWhatsappOrder(phone) {
+  let userContext = userContexts.get(phone);
+  if (!userContext) return;
+  
+  const order = userContext.order || [];
+  const totalAmount = order.reduce((sum, item) => sum + Number(item.price), 0);
+  
+  // Generate order ID: "ORD-" + YYYYMMDD + "-" + random 6-digit number.
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth() + 1).padStart(2, "0");
+  const dd = String(now.getDate()).padStart(2, "0");
+  const randomDigits = Math.floor(100000 + Math.random() * 900000);
+  const orderId = `ORD-${yyyy}${mm}${dd}-${randomDigits}`;
+  
+  // Build products array. Each product includes:
+  // - price, product (the product doc id), quantity (default 1), rejected (false), served (false)
+  const products = order.map(item => ({
+    price: Number(item.price),
+    product: item.id,
+    quantity: 1,
+    rejected: false,
+    served: false
+  }));
+  
+  // Build order object using provided structure.
+  const orderObj = {
+    accepted: false,
+    amount: totalAmount,
+    date: admin.firestore.FieldValue.serverTimestamp(),
+    orderId: orderId,
+    paid: false,
+    phone: phone,
+    products: products,
+    table: userContext.table,           // Modify if table information is available.
+    user: phone,          // Here, we use the phone as the user identifier.
+    vendor: userContext.vendorId
+  };
+  
+  try {
+    await firestore.collection("mt_whatsappOrders").add(orderObj);
+    console.log("Order created with ID:", orderId);
+  } catch (error) {
+    console.error("Error creating order in Firestore:", error.message);
+  }
+}
+
 // Payment Information
 async function sendPaymentInfo(phone, phoneNumberId) {
   const userContext = userContexts.get(phone);
@@ -409,6 +470,9 @@ async function sendPaymentInfo(phone, phoneNumberId) {
     return;
   }
 
+   // First, create the order document in Firestore.
+  await createWhatsappOrder(phone);
+  
   let paymentLink = "Link unavailable";
   try {
     const vendorDoc = await firestore.collection("mt_vendors").doc(userContext.vendorId).get();
@@ -551,7 +615,8 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
          //   userContext.selectedCategory
          // );
         } else if (buttonId === "ORDER") {
-          await sendOrderSummary(phone, phoneNumberId);
+          //await sendOrderSummary(phone, phoneNumberId);
+          await sendTable(phone, phoneNumberId);
         }
       }
       break;
@@ -583,6 +648,20 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
 // For plain text commands.
 const handleTextMessages = async (message, phone, phoneNumberId) => {
   let userContext = userContexts.get(phone) || {};
+
+  // If we're expecting table information, process it first.
+  if (userContext.stage === "TABLE_SELECTION") {
+    const table = message.text.body.trim();
+    userContext.table = table;
+    // Next flow.
+    await sendOrderSummary(phone, phoneNumberId);
+    // Optionally, update the stage to proceed with the next step (e.g., order confirmation or payment)
+    //userContext.stage = "ORDER_SUMMARY"; // Or another stage of your choice.
+    userContexts.set(phone, userContext);
+    return;
+  }
+
+  
   const messageText = message.text.body.trim().toLowerCase();
   
 
