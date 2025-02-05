@@ -940,6 +940,227 @@ app.get("/webhook", (req, res) => {
   }
 });
 
+
+// Client-side message endpoints
+app.post("/api/send-order-placed", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "Order Placed! ✅ Your request has been sent to the kitchen/bar. Stay tuned—your feast is in the works! 🍽🔥" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "Order placed message sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send order placed message",
+      error: errorMessage,
+    });
+  }
+});
+
+app.post("/api/send-order-confirmed", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "Order Confirmed! 🎉 Your order is being prepared. We'll let you know when it's ready! ⏳🍽" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "Order confirmed message sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send order confirmed message",
+      error: errorMessage,
+    });
+  }
+});
+
+app.post("/api/send-order-rejected", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "Oops! 🚨 Your order couldn't be processed this time. Contact the restaurant for more details. We've got you covered! 😊" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "Order rejected message sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send order rejected message",
+      error: errorMessage,
+    });
+  }
+});
+
+app.post("/api/send-order-ready", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "🍽 Your order is ready! 🎊 Get ready for service. Enjoy 🍕🍻" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "Order ready message sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send order ready message",
+      error: errorMessage,
+    });
+  }
+});
+
+app.post("/api/send-feedback-request", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "💬 How was your experience? ⭐⭐⭐⭐⭐ We'd love to hear your thoughts!" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "Feedback request message sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send feedback request message",
+      error: errorMessage,
+    });
+  }
+});
+
+// Restaurant-side message endpoints
+app.post("/api/send-new-order-alert", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "New Order Alert! 🚀 A customer just placed an order. Check it out and confirm to get things rolling! 🍕🍹" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "New order alert sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send new order alert",
+      error: errorMessage,
+    });
+  }
+});
+
+app.post("/api/send-order-served", async (req, res) => {
+  try {
+    const { phone, phoneNumberId } = req.body;
+    const result = await sendWhatsAppMessage(phone, {
+      type: "text",
+      text: { 
+        body: "✅ Order Served! 🛎 The customer has received their order. Another happy customer in the books! 🎉" 
+      }
+    }, phoneNumberId);
+
+    res.status(200).json({
+      success: true,
+      message: "Order served message sent successfully!",
+      response: result,
+    });
+  } catch (error) {
+    const errorMessage =
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      "An unknown error occurred";
+
+    const statusCode = error?.response?.status || 500;
+
+    res.status(statusCode).json({
+      success: false,
+      message: "Failed to send order served message",
+      error: errorMessage,
+    });
+  }
+});
+
+
 // --- 12. Start the Server ---
 const startServer = async () => {
   try {
