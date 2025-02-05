@@ -709,7 +709,7 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       userContext.stage = "CLASS_SELECTION";
       userContexts.set(phone, userContext);
       break;
-    case "0798922640/Icupa":
+    case "77186193ICUPA":
       // Start the ordering flow by sending the class selection message.
       await sendClassSelectionMessage(phone, phoneNumberId);
       userContext.vendorId = "alSIUvz0JNmugFDoJ3En"; 
