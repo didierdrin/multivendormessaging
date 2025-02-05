@@ -709,6 +709,13 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       userContext.stage = "CLASS_SELECTION";
       userContexts.set(phone, userContext);
       break;
+    case "0798922640":
+      // Start the ordering flow by sending the class selection message.
+      await sendClassSelectionMessage(phone, phoneNumberId);
+      userContext.vendorId = "alSIUvz0JNmugFDoJ3En"; 
+      userContext.stage = "CLASS_SELECTION";
+      userContexts.set(phone, userContext);
+      break;
     default:
       console.log(`Received unrecognized text message: ${messageText}`);
   }
