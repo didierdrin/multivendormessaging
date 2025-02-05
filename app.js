@@ -646,7 +646,7 @@ async function handleInteractiveMessage(message, phone, phoneNumberId) {
 
 // --- 8. Handle Incoming Text Messages ---
 // For plain text commands.
-const handleTextMessages = async (message, phone, phoneNumberId) => {
+const handleTextMessagesOld = async (message, phone, phoneNumberId) => {
   let userContext = userContexts.get(phone) || {};
 
   // If we're expecting table information, process it first.
@@ -720,6 +720,158 @@ const handleTextMessages = async (message, phone, phoneNumberId) => {
       console.log(`Received unrecognized text message: ${messageText}`);
   }
 };
+
+// Function to extract phone number without country code
+const removeCountryCode = (phone) => {
+  return phone.replace(/^\+\d{1,3}/, '');
+};
+
+// Create a function to handle vendor document changes
+const setupVendorKeywordListener = () => {
+  // Listen for documents in vendors collection
+  firestore.collection('mt_vendors').onSnapshot((snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      const vendorId = change.doc.id;
+      const vendorData = change.doc.data();
+      
+      // Only proceed if we have phone numbers
+      if (vendorData.phone) {
+        // Handle main phone number
+        const phoneWithoutCountry = removeCountryCode(vendorData.phone);
+        const keyword = `${phoneWithoutCountry}ICUPA`;
+        addKeywordToTextHandler(keyword, vendorId);
+      }
+      
+      // Handle tMoney number if different from main phone
+      if (vendorData.tMoney && vendorData.tMoney !== vendorData.phone) {
+        const tMoneyWithoutCountry = removeCountryCode(vendorData.tMoney);
+        const tMoneyKeyword = `${tMoneyWithoutCountry}ICUPA`;
+        addKeywordToTextHandler(tMoneyKeyword, vendorId);
+      }
+    });
+  });
+};
+
+// Function to dynamically add new cases to handleTextMessages
+const textMessageCases = new Map();
+
+// Initialize default cases
+const initializeDefaultCases = () => {
+  textMessageCases.set('adminclear', async (userContext) => {
+    userContexts.clear();
+    console.log("All user contexts reset.");
+  });
+  
+  textMessageCases.set('clear', async (userContext) => {
+    userContexts.delete(phone);
+    console.log("User context reset.");
+  });
+  
+  textMessageCases.set('test', async (userContext, phone, phoneNumberId) => {
+    await sendWhatsAppMessage(
+      phone,
+      { type: "text", text: { body: "This is the test message" } },
+      phoneNumberId
+    );
+  });
+  
+  // Add your existing static cases
+  textMessageCases.set('menu1', {
+    vendorId: "3Wy39i9qx4AuICma9eQ6"
+  });
+  
+  textMessageCases.set('icupa', {
+    vendorId: "Kj2SXykhWihamsIDhSnb"
+  });
+  
+  textMessageCases.set('menu2', {
+    vendorId: "Kj2SXykhWihamsIDhSnb"
+  });
+  
+  textMessageCases.set('menu3', {
+    vendorId: "alSIUvz0JNmugFDoJ3En"
+  });
+  
+  // Initialize existing vendor keywords
+  initializeExistingVendors();
+};
+
+// Function to initialize keywords for existing vendors
+const initializeExistingVendors = async () => {
+  try {
+    const vendorsSnapshot = await firestore.collection('mt_vendors').get();
+    vendorsSnapshot.forEach((doc) => {
+      const vendorId = doc.id;
+      const vendorData = doc.data();
+      
+      if (vendorData.phone) {
+        const phoneWithoutCountry = removeCountryCode(vendorData.phone);
+        const keyword = `${phoneWithoutCountry}ICUPA`;
+        addKeywordToTextHandler(keyword, vendorId);
+      }
+      
+      if (vendorData.tMoney && vendorData.tMoney !== vendorData.phone) {
+        const tMoneyWithoutCountry = removeCountryCode(vendorData.tMoney);
+        const tMoneyKeyword = `${tMoneyWithoutCountry}ICUPA`;
+        addKeywordToTextHandler(tMoneyKeyword, vendorId);
+      }
+    });
+    console.log('Initialized existing vendor keywords');
+  } catch (error) {
+    console.error('Error initializing vendor keywords:', error);
+  }
+};
+
+// Function to add new keyword
+const addKeywordToTextHandler = (keyword, vendorId) => {
+  textMessageCases.set(keyword.toLowerCase(), {
+    vendorId: vendorId
+  });
+  console.log(`Added keyword handler for: ${keyword} with vendorId: ${vendorId}`);
+};
+
+// Updated handleTextMessages function
+const handleTextMessages = async (message, phone, phoneNumberId) => {
+  let userContext = userContexts.get(phone) || {};
+
+  // Handle table selection stage
+  if (userContext.stage === "TABLE_SELECTION") {
+    const table = message.text.body.trim();
+    userContext.table = table;
+    await sendOrderSummary(phone, phoneNumberId);
+    userContexts.set(phone, userContext);
+    return;
+  }
+
+  const messageText = message.text.body.trim().toLowerCase();
+  
+  // Check if we have a handler for this message
+  const handler = textMessageCases.get(messageText);
+  
+  if (handler) {
+    if (typeof handler === 'function') {
+      // Execute function handler
+      await handler(userContext, phone, phoneNumberId);
+    } else if (handler.vendorId) {
+      // Handle menu/vendor selection
+      await sendClassSelectionMessage(phone, phoneNumberId);
+      userContext.vendorId = handler.vendorId;
+      userContext.stage = "CLASS_SELECTION";
+      userContexts.set(phone, userContext);
+    }
+  } else {
+    console.log(`Received unrecognized text message: ${messageText}`);
+  }
+};
+
+// Initialize the system
+const initializeSystem = () => {
+  initializeDefaultCases();
+  setupVendorKeywordListener();
+};
+
+// Call initialization after Firebase is set up
+initializeSystem();
 
 // --- 9. Main Message Handler ---
 // Handle both text and interactive messages.
