@@ -490,7 +490,7 @@ async function sendPaymentInfo(phone, phoneNumberId) {
 
   
 
-  const payload = {
+  const payloadOld = {
     type: "interactive",
     interactive: {
       type: "button",
@@ -517,6 +517,32 @@ async function sendPaymentInfo(phone, phoneNumberId) {
     }
   };
 
+  // Make sure the template "payment_link_template" is pre-approved by WhatsApp.
+  const payload = {
+    messaging_product: "whatsapp",
+    to: phone,
+    type: "template",
+    template: {
+      name: "paymultivendor", // Your approved template name
+      language: { code: "en_US" },
+      components: [
+        {
+          // Button component with a URL button.
+          // In WhatsApp templates, call-to-action buttons are defined in the template.
+          type: "button",
+          sub_type: "url",
+          index: "0", // The first (or only) button in the template
+          parameters: [
+            {
+              type: "text",
+              text: paymentLink
+            }
+          ]
+        }
+      ]
+    }
+  };
+  
   await sendWhatsAppMessage(phone, payload, phoneNumberId);
   userContexts.delete(phone);
 }
