@@ -360,7 +360,7 @@ async function sendTable(phone, phoneNumberId) {
   const payload = {
     type: "text",
     text: {
-      body: "Please let us know the table you're seated at to serve you!"
+      body: `*Where to serve you?* 📍\nEnter your table number! (eg 1, 2, 3…)`
     }
   };
 
