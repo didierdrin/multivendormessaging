@@ -11,6 +11,8 @@ import path from "path";
 const serviceAccountPath = "/etc/secrets/serviceAccountKey.json";
 const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, "utf8"));
 
+const PHONE_NUMBER_ID = "189923527537354";
+
 // Initialize Firebase Admin SDK using the service account
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -908,7 +910,7 @@ app.post("/webhook", async (req, res) => {
 
     try {
       // Adjust the phoneNumberId check as needed.
-      if (phoneNumberId === "189923527537354") {
+      if (phoneNumberId === PHONE_NUMBER_ID) {
         await handlePhoneNumber1Logic(message, phone, changes, phoneNumberId);
       } else {
         console.warn("Unknown phone number ID:", phoneNumberId);
@@ -944,13 +946,13 @@ app.get("/webhook", (req, res) => {
 // Client-side message endpoints
 app.post("/api/send-order-placed", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "Order Placed! ✅ Your request has been sent to the kitchen/bar. Stay tuned—your feast is in the works! 🍽🔥" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
@@ -975,13 +977,13 @@ app.post("/api/send-order-placed", async (req, res) => {
 
 app.post("/api/send-order-confirmed", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "Order Confirmed! 🎉 Your order is being prepared. We'll let you know when it's ready! ⏳🍽" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
@@ -1006,13 +1008,13 @@ app.post("/api/send-order-confirmed", async (req, res) => {
 
 app.post("/api/send-order-rejected", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "Oops! 🚨 Your order couldn't be processed this time. Contact the restaurant for more details. We've got you covered! 😊" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
@@ -1037,13 +1039,13 @@ app.post("/api/send-order-rejected", async (req, res) => {
 
 app.post("/api/send-order-ready", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "🍽 Your order is ready! 🎊 Get ready for service. Enjoy 🍕🍻" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
@@ -1068,13 +1070,13 @@ app.post("/api/send-order-ready", async (req, res) => {
 
 app.post("/api/send-feedback-request", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "💬 How was your experience? ⭐⭐⭐⭐⭐ We'd love to hear your thoughts!" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
@@ -1100,13 +1102,13 @@ app.post("/api/send-feedback-request", async (req, res) => {
 // Restaurant-side message endpoints
 app.post("/api/send-new-order-alert", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "New Order Alert! 🚀 A customer just placed an order. Check it out and confirm to get things rolling! 🍕🍹" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
@@ -1131,13 +1133,13 @@ app.post("/api/send-new-order-alert", async (req, res) => {
 
 app.post("/api/send-order-served", async (req, res) => {
   try {
-    const { phone, phoneNumberId } = req.body;
+    const { phone } = req.body;
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
         body: "✅ Order Served! 🛎 The customer has received their order. Another happy customer in the books! 🎉" 
       }
-    }, phoneNumberId);
+    }, PHONE_NUMBER_ID);
 
     res.status(200).json({
       success: true,
