@@ -481,7 +481,8 @@ async function sendPaymentInfo(phone, phoneNumberId) {
     if (vendorDoc.exists) {
       const vendorData = vendorDoc.data();
       if (vendorData.paymentLink) {
-        paymentLink = vendorData.paymentLink;
+        //paymentLink = vendorData.paymentLink;
+        paymentLink = vendorData.paymentLink.replace('https://revolut.me/', '');
       }
     }
   } catch (error) {
@@ -523,7 +524,7 @@ async function sendPaymentInfo(phone, phoneNumberId) {
     to: phone,
     type: "template",
     template: {
-      name: "paymultivendor", // Your approved template name
+      name: "paymultivendortwo", // Your approved template name
       language: { code: "en_US" },
       components: [
         {
@@ -1029,7 +1030,7 @@ app.post("/api/send-order-confirmed", async (req, res) => {
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
-        body: "Order Confirmed! 🎉 Your order is being prepared. We'll let you know when it's ready! ⏳🍽" 
+        body: `*Order Confirmed!* 🎉 \nYour order is being prepared. We'll let you know when it's ready! ⏳🍽` 
       }
     }, PHONE_NUMBER_ID);
 
@@ -1185,7 +1186,7 @@ app.post("/api/send-order-served", async (req, res) => {
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
-        body: "✅ Order Served! 🛎 The customer has received their order. Another happy customer in the books! 🎉" 
+        body: `✅ *Order Served!* 🛎 \nThe customer has received their order. Another happy customer in the books! 🎉`
       }
     }, PHONE_NUMBER_ID);
 
