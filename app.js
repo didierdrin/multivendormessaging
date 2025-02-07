@@ -762,7 +762,7 @@ const initializeDefaultCases = () => {
     console.log("All user contexts reset.");
   });
   
-  textMessageCases.set('clear', async (userContext) => {
+  textMessageCases.set('clear', async (userContext, phone) => {
     userContexts.delete(phone);
     console.log("User context reset.");
   });
