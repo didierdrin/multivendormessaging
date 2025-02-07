@@ -400,7 +400,7 @@ async function sendOrderSummary(phone, phoneNumberId) {
       body: { text: summaryText },
       action: {
         buttons: [
-          { type: "reply", reply: { id: "PAY", title: "Pay" } },
+          { type: "reply", reply: { id: "PAY", title: "Send" } },
           { type: "reply", reply: { id: "ADD_MORE", title: "Add More" } },
           { type: "reply", reply: { id: "CANCEL", title: "Cancel" } }
         ]
@@ -488,10 +488,32 @@ async function sendPaymentInfo(phone, phoneNumberId) {
     console.error("Error fetching vendor data:", error.message);
   }
 
+  
+
   const payload = {
-    type: "text",
-    text: {
-      body: `*Tap to pay with Revolut!*\nInstant & hassle-free! ✅:\n${paymentLink}`
+    type: "interactive",
+    interactive: {
+      type: "button",
+      header: {
+        type: "text",
+        text: "Order Placed! ✅"
+      },
+      body: {
+        text: `📩 Your Order has been sent! 🍽 \nTap to pay with Revolut! Instant & hassle-free! ✅:\n${paymentLink}`
+      },
+      // Footer is optional; include it if desired.
+     // footer: {
+     //   text: "Thank you for your order."
+     // },
+      action: {
+        buttons: [
+          {
+            type: "url",
+            url: paymentLink,
+            title: "Pay with Revolut"
+          }
+        ]
+      }
     }
   };
 
