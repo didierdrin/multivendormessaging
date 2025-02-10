@@ -1186,7 +1186,7 @@ app.post("/api/send-order-served", async (req, res) => {
     const result = await sendWhatsAppMessage(phone, {
       type: "text",
       text: { 
-        body: `✅ *Order Served!* 🛎 \nThe customer has received their order. Another happy customer in the books! 🎉`
+        body: `🍽 *Your order is ready!* 🎊 \nGet ready for service. Enjoy 🍕🍻`
       }
     }, PHONE_NUMBER_ID);
 
